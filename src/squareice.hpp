@@ -52,35 +52,38 @@ class SquareIceGame {
         void Reset();
         int InitAgent(int site);
 
+        double Start(int site);
+
         // state transition
         void go_to_S0();            // S0 <- St
         void go_to_St();            // S0 -> St
+
         void update_to_newstate();  // St -> St+1
 
         int FlipSite(int site);
         int FlipOnSite();
+        int StayOnSite();
 
-        // actions mapping
-        // a[0]: UP 
-        // a[1]: DOWN
-        // a[2]: LEFT
-        // a[3]: RIGHT
-        // a[4]: NEXTUP
-        // a[5]: NEXTDOWN
-        // ... retrun isIceRule
-        //
-        // Many different action element
-        bool ActDirection(int action);
-        bool ActDirectionIce(int action);
-        bool ActSpinSign(int action);
-        bool ActOneWay(int action);
-        bool ActFlipSite(int site, int action);
+        // action: return reward
+        double Act(int action);
+        int whichActionToFlipSite(int site);
+        int whichActionToWalkSite(int site);
+        int dual_action_flip(int action);
+        int dual_action_walk(int action);
+        int popActionQueue();
+        int popShortLoopActionQueue();
 
         // <S0, St>
-        std::vector<double> MetropolisJudgement();
+        double MetropolisJudgement();
 
+
+        // Used for loop algorithm
+        bool isShortClosed();
+        bool isLongClosed();
+        int popVisitedQueue();
+        int popTrajectoryQueue();
+        // Depreciated
         bool ShortLoopUpdate();
-        bool LongLoopUpdate();
 
         // metroplis algorithm, return rewards vector
         // r[0]: acceptance status
@@ -98,7 +101,6 @@ class SquareIceGame {
         double getDiffEnergy();
         inline int getDiffCounter() {return difference_counter;};
         inline int getNumUpdates() { return num_S0_updates;};
-        inline int getNumShortLoopOccurs() {return num_shortloop_occurs;};
 
         inline double getS0DefectDensity() {return calculate_S0_defect_density();};
         inline double getStDefectDensity() {return calculate_St_defect_density();};
@@ -126,6 +128,8 @@ class SquareIceGame {
         inline std::vector<int> getUpSpin() {return up_spin;};
         inline std::vector<int> getDownSpin() {return down_spin;};
         inline std::vector<int> getTrajectoryMap() {return trajectory_map;};
+        inline std::vector<int> getTrajectory() {return trajectory_queue;};
+        inline std::vector<int> getActionQueue() {return action_queue;};
 
         /* */
 
@@ -135,22 +139,9 @@ class SquareIceGame {
 
         // combined methods
         std::vector<int> getNeighborSitesAndSpins(int site);
-        std::vector<int> getNeighborSitesWithSpins(int site);
-
-        std::vector<double> getNeighborNormalizedSites(int site);
-        std::vector<double> getNeighborNormalizedSitesAndSpins(int site);
-        std::vector<double> getNeighborNormalizedSitesWithSpins(int site);
-
-        // lazy, generate configuration-difference only when called
-        std::vector<int> get_diff_configs();
-
-        void set_virt_configs(boost::python::list &ns);
 
         // Utilities functions
         void show_info() {MC_info.print_INFO();};
-        inline int num_of_directional_actions() {return 4+1;};
-        inline int num_of_directional_actions_icerule() {return 6+1;};
-        inline int num_of_flip_site_actions() {return 2;};
 
     private:
         // Private Functions // 
@@ -158,33 +149,37 @@ class SquareIceGame {
         
         // flip the site where agent is on, return spin after flipped
         
-        /* Random Movement */
-        // move and flip the next site
-        bool go_spinup();
-        bool go_spindown();
-
-        /* Directional Movement */
-        // move the direction
-        bool go_nn_right();
-        bool go_nn_left();
-        bool go_nn_up();
-        bool go_nn_down();
-        // The following two functions depends on-site spin
-        bool go_nnn_up();
-        bool go_nnn_down();
-
         // move the direction
         bool go_right();
         bool go_left();
         bool go_up();
         bool go_down();
+        bool go_next_up();
+        bool go_next_down();
 
-        /* Same Spin Sign Movement */
-        // satisfy ice rule
-        bool go_same_spin_up();
-        bool go_same_spin_down();
-        bool go_same_spin_left();
-        bool go_same_spin_right();
+        bool flip_right();
+        bool flip_left();
+        bool flip_up();
+        bool flip_down();
+        bool flip_next_up();
+        bool flip_next_down();
+
+        /*** 
+         *
+	        NN[p][0] = site_index2d[xp][y];
+    	    NN[p][1] = site_index2d[x][yp];
+    	    NN[p][2] = site_index2d[xm][y];
+    	    NN[p][3] = site_index2d[x][ym];
+    	    NNN[p][0] = site_index2d[xp][yp];
+     	    NNN[p][1] = site_index2d[xm][yp];
+        	NNN[p][2] = site_index2d[xm][ym];
+    	    NNN[p][3] = site_index2d[xp][ym];
+        ***/
+
+        bool flip_next_upper_right();
+        bool flip_next_upper_left();
+        bool flip_next_lower_left();
+        bool flip_next_lower_right();
 
         void update_agent_site(int new_site);
         void seperate_up_or_down(int site);
@@ -195,14 +190,14 @@ class SquareIceGame {
         void reset_maps();
 
         // Private Data //
+        //
+        double default_reward;
         
         // Simulation Parameters
         INFO MC_info;
         int L;
         int N;
         
-        static const int num_reward_types = 4;
-
         // physical information or settings
         double kT;               // System Temperature
         double h1_t, h2_t, h3_t; // unit conversion
@@ -228,7 +223,9 @@ class SquareIceGame {
         vector<int> other_defects;
         int defect_spin; 
         int agent_site; // current site
+        int agent_vertex; // +1: upper block; -1: lower block
         int agent_spin; // current spin
+        int csite;
 
         // Auxillary variables
         vector<int> up_spin;
@@ -236,9 +233,7 @@ class SquareIceGame {
 
         /* Variable length queue */
         // Notice: Only FlipOnSite counts
-        vector<int> walked_sites;
         // Notice: visited map only counts agent flip
-        vector<int> visited_map;
 
         /* LxL map of defect position */
         vector<int> defect_map;
@@ -246,12 +241,19 @@ class SquareIceGame {
         vector<int> action_map;
         vector<int> sublatt_map;
         vector<int> difference_map;
-        vector<int> trajectory_map;
 
-        bool is_short_closed();
-        bool is_long_closed();
-        int num_shortloop_occurs; 
-        int num_longloop_occurs;
+        // trajectory: walking trajectory
+        vector<int> trajectory_map;
+        vector<int> trajectory_counter_map;
+        vector<int> trajectory_queue;
+
+        vector<int> action_queue;
+
+        // visited: spin flipping only counts
+        vector<int> visited_map;
+        vector<int> visited_counter_map;
+        vector<int> visited_queue;
+
 
         // configuration difference from S0 to St+1
         int difference_counter;
@@ -289,6 +291,7 @@ BOOST_PYTHON_MODULE(libicegame)
         .def("init_configs", &SquareIceGame::InitConfigs)
         .def("init_agent", &SquareIceGame::InitAgent)
         .def("create_defect", &SquareIceGame::CreateDefect)
+        .def("start", &SquareIceGame::Start)
         .def("reset", &SquareIceGame::Reset)
 
         .def("set_magnetic_field", &SquareIceGame::setMagneticField)
@@ -307,6 +310,8 @@ BOOST_PYTHON_MODULE(libicegame)
         .def("get_visited_map", &SquareIceGame::getVisitedMap)
         .def("get_defect_map", &SquareIceGame::getDefectMap)
         .def("get_traject_map", &SquareIceGame::getTrajectoryMap)
+        .def("get_traject", &SquareIceGame::getTrajectory)
+        .def("get_action_sequence", &SquareIceGame::getActionQueue)
 
         .def("get_up_spin", &SquareIceGame::getUpSpin)
         .def("get_down_spin", &SquareIceGame::getDownSpin)
@@ -318,28 +323,25 @@ BOOST_PYTHON_MODULE(libicegame)
         .def("get_St_next_states", &SquareIceGame::getStNextConfigs)
         .def("get_neighbor_sites", &SquareIceGame::getNeighborSites)
         .def("get_neighbor_spins", &SquareIceGame::getNeighborSpins)
-        .def("get_neighbor_sites_and_spins", &SquareIceGame::getNeighborSitesAndSpins)
-        .def("get_neighbor_sites_with_spins", &SquareIceGame::getNeighborSitesWithSpins)
-        .def("get_neighbor_normalized_sites", &SquareIceGame::getNeighborNormalizedSites)
-        .def("get_neighbor_normalized_sites_and_spins", &SquareIceGame::getNeighborNormalizedSitesAndSpins)
-        .def("get_neighbor_normalized_sites_with_spins", &SquareIceGame::getNeighborNormalizedSitesWithSpins)
 
         .def("get_diff_ratio", &SquareIceGame::getDiffRatio)
         .def("get_diff_energy", &SquareIceGame::getDiffEnergy)
         .def("get_diff_counter", &SquareIceGame::getDiffCounter)
         .def("get_num_updates", &SquareIceGame::getNumUpdates)
-        .def("get_num_shortloop_occurs", &SquareIceGame::getNumShortLoopOccurs)
 
         .def("flip_site", &SquareIceGame::FlipSite)
         .def("flip_on_site", &SquareIceGame::FlipOnSite)
         .def("MCRun", &SquareIceGame::MCRun)
-        .def("short_loop_update", &SquareIceGame::ShortLoopUpdate)
+
+        .def("is_short_closed", &SquareIceGame::isShortClosed)
+        .def("is_long_closed", &SquareIceGame::isLongClosed)
+        .def("pop_visited_queue", &SquareIceGame::popVisitedQueue)
+        .def("pop_trajectory_queue", &SquareIceGame::popTrajectoryQueue)
 
         .def("metropolis_judgement", &SquareIceGame::MetropolisJudgement)
-        .def("act_direction", &SquareIceGame::ActDirection)
-        .def("act_direction_ice", &SquareIceGame::ActDirectionIce)
-        .def("act_spinsign", &SquareIceGame::ActSpinSign)
-        .def("act_flip_site", &SquareIceGame::ActFlipSite)
+        .def("act", &SquareIceGame::Act)
+        .def("pop_action_queue", &SquareIceGame::popActionQueue)
+        .def("pop_shortloop_action_queue", &SquareIceGame::popShortLoopActionQueue)
         ;
 }
 #endif

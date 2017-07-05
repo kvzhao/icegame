@@ -22,9 +22,13 @@ SquareIceGame::SquareIceGame(INFO in) : MC_info(in){
     sublatt_map.resize(N, 0);
     defect_map.resize(N, 0);
     visited_map.resize(N, 0);
+    visited_counter_map.resize(N, 0);
     difference_map.resize(N, 0);
-    trajectory_map.resize(N, 0);
 
+    trajectory_map.resize(N, 0);
+    trajectory_counter_map.resize(N, 0);
+
+    default_reward = 0.0;
     // default setting
     kT = 0.0001;
     h1_t = 0.0;
@@ -35,14 +39,15 @@ SquareIceGame::SquareIceGame(INFO in) : MC_info(in){
     J3a = 0.0;
     J3b = 0.0;
     agent_site = 0;
+    agent_vertex = 1;
     init_site = -1;
     agent_spin = 0;
     defect_site = -1;
     defect_spin = 0;
+    csite = -1;
     difference_counter = 0;
     dE = 0.0;
     num_S0_updates = 0;
-    num_shortloop_occurs = 0;
 
     std::cout << "MCSim initialized.\n";
 };
@@ -87,13 +92,19 @@ void SquareIceGame::InitConfigs() {
 void SquareIceGame::reset_configs() {}
 */
 
+double SquareIceGame::Start(int site) {
+    CreateDefect(site);
+    InitAgent(site);
+    return getStDefectDensity();
+}
+
 int SquareIceGame::CreateDefect(int site) {
     // Create defect on St only, put the agent on it (first)
     // Defect live on S0, and then St should sync to it
     if (site < MC_info.Num_sites && site > 0) {
         defect_site = site;
         // Create defect on S0, flip
-        // St.Ising[defect_site] *= -1;
+        St.Ising[defect_site] *= -1;
         FlipSite(defect_site);
         // Save the defect sign
         defect_spin = getStSpin(defect_site);
@@ -124,6 +135,12 @@ int SquareIceGame::InitAgent(int site) {
     if (site < N) {
         update_agent_site(site);
         init_site = site;
+        trajectory_queue.push_back(site);
+        trajectory_map[site] = 1;
+        trajectory_counter_map[site] += 1;
+        visited_queue.push_back(site);
+        visited_map[site] = 1;
+        visited_counter_map[site] += 1;
    } else {
        return -1;
    }
@@ -156,7 +173,6 @@ void SquareIceGame::go_to_S0() {
             break;
         }
     }
-
     reset_maps();
 }
 
@@ -181,6 +197,7 @@ void SquareIceGame::update_agent_site(int new_site) {
     // update agent position map
     agent_pos_map[old_agent] = 0;
     agent_pos_map[agent_site] = 1;
+
     // update subi-lattice map
     for (int i =0; i < 4; ++i) {
         sublatt_map[latt.NN[old_agent][i]] = 0;
@@ -219,6 +236,7 @@ void SquareIceGame::update_agent_site(int new_site) {
         if (agent_spin != getSpin(latt.NNN[agent_site][3]))
             action_map[latt.NNN[agent_site][3]] = 1;
     }
+
 }
 
 void SquareIceGame::reset_maps() {
@@ -228,7 +246,12 @@ void SquareIceGame::reset_maps() {
     std::fill(sublatt_map.begin(), sublatt_map.end(), 0);
     std::fill(defect_map.begin(), defect_map.end(), 0);
     std::fill(visited_map.begin(), visited_map.end(), 0);
+    std::fill(visited_counter_map.begin(), visited_counter_map.end(), 0);
     std::fill(trajectory_map.begin(), trajectory_map.end(), 0);
+    std::fill(trajectory_counter_map.begin(), trajectory_counter_map.end(), 0);
+    trajectory_queue.clear();
+    visited_queue.clear();
+    action_queue.clear();
 }
 
 void SquareIceGame::update_to_newstate() {
@@ -277,7 +300,7 @@ int SquareIceGame::getS0Spin(int site) {
 std::vector<int> SquareIceGame::getNeighborSites(int site) {
     // latt.NN[site][num_of_neighbor];
     std::vector<int> neighbor_sites;
-    neighbor_sites.push_back(site);
+    //neighbor_sites.push_back(site);
     neighbor_sites.push_back(latt.NN[site][0]);
     neighbor_sites.push_back(latt.NN[site][1]);
     neighbor_sites.push_back(latt.NN[site][2]);
@@ -292,29 +315,10 @@ std::vector<int> SquareIceGame::getNeighborSites(int site) {
     return neighbor_sites;
 }
 
-std::vector<double> SquareIceGame::getNeighborNormalizedSites(int site) {
-    // latt.NN[site][num_of_neighbor];
-    double denum = 1.0 / double(MC_info.Num_sites);
-    std::vector<double> neighbor_sites;
-    neighbor_sites.push_back(site * denum);
-    neighbor_sites.push_back(latt.NN[site][0] * denum);
-    neighbor_sites.push_back(latt.NN[site][1] * denum);
-    neighbor_sites.push_back(latt.NN[site][2] * denum);
-    neighbor_sites.push_back(latt.NN[site][3] * denum);
-    if (1 == latt.sub[site]) {
-        neighbor_sites.push_back(latt.NNN[site][0] * denum);
-        neighbor_sites.push_back(latt.NNN[site][2] * denum);
-    } else {
-        neighbor_sites.push_back(latt.NNN[site][1] * denum);
-        neighbor_sites.push_back(latt.NNN[site][3] * denum);
-    }
-    return neighbor_sites;
-}
-
 std::vector<int> SquareIceGame::getNeighborSpins(int site) {
     // latt.NN[site][num_of_neighbor];
     std::vector<int> neighbor_spins;
-    neighbor_spins.push_back(St.Ising[site]);
+    //neighbor_spins.push_back(St.Ising[site]);
     neighbor_spins.push_back(St.Ising[latt.NN[site][0]]);
     neighbor_spins.push_back(St.Ising[latt.NN[site][1]]);
     neighbor_spins.push_back(St.Ising[latt.NN[site][2]]);
@@ -322,6 +326,7 @@ std::vector<int> SquareIceGame::getNeighborSpins(int site) {
     if (1 == latt.sub[site]) {
         neighbor_spins.push_back(St.Ising[latt.NNN[site][0]]);
         neighbor_spins.push_back(St.Ising[latt.NNN[site][2]]);
+        //
     } else {
         neighbor_spins.push_back(St.Ising[latt.NNN[site][1]]);
         neighbor_spins.push_back(St.Ising[latt.NNN[site][3]]);
@@ -339,79 +344,15 @@ std::vector<int> SquareIceGame::getNeighborSitesAndSpins(int site) {
     return concat;
 }
 
-std::vector<double> SquareIceGame::getNeighborNormalizedSitesAndSpins(int site) {
-    std::vector<double> concat;
-    std::vector<double> sites = getNeighborNormalizedSites(site);
-    std::vector<int> intspin = getNeighborSpins(site);
-    std::vector<double> spins(intspin.begin(), intspin.end());
-    concat.reserve(sites.size() + spins.size());
-    concat.insert(concat.end(), sites.begin(), sites.end());
-    concat.insert(concat.end(), spins.begin(), spins.end());
-    return concat;
-}
-
-std::vector<int> SquareIceGame::getNeighborSitesWithSpins(int site) {
-    std::vector<int> concat;
-    concat.push_back(site);
-    concat.push_back(St.Ising[site]);
-    concat.push_back(latt.NN[site][0]);
-    concat.push_back(St.Ising[latt.NN[site][0]]);
-    concat.push_back(latt.NN[site][1]);
-    concat.push_back(St.Ising[latt.NN[site][1]]);
-    concat.push_back(latt.NN[site][2]);
-    concat.push_back(St.Ising[latt.NN[site][2]]);
-    concat.push_back(latt.NN[site][3]);
-    concat.push_back(St.Ising[latt.NN[site][3]]);
-    if (1 == latt.sub[site]) {
-        concat.push_back(latt.NNN[site][0]);
-        concat.push_back(St.Ising[latt.NNN[site][0]]);
-        concat.push_back(latt.NNN[site][2]);
-        concat.push_back(St.Ising[latt.NNN[site][2]]);
-    } else {
-        concat.push_back(latt.NNN[site][1]);
-        concat.push_back(St.Ising[latt.NNN[site][1]]);
-        concat.push_back(latt.NNN[site][3]);
-        concat.push_back(St.Ising[latt.NNN[site][3]]);
-    }
-    return concat;
-}
-
-std::vector<double> SquareIceGame::getNeighborNormalizedSitesWithSpins(int site) {
-    double denum = 1.0 / double(MC_info.Num_sites);
-    std::vector<double> concat;
-    concat.push_back(site * denum);
-    concat.push_back(double(St.Ising[site]));
-    concat.push_back(latt.NN[site][0] * denum);
-    concat.push_back(double(St.Ising[latt.NN[site][0]]));
-    concat.push_back(latt.NN[site][1] * denum);
-    concat.push_back(double(St.Ising[latt.NN[site][1]]));
-    concat.push_back(latt.NN[site][2] * denum);
-    concat.push_back(double(St.Ising[latt.NN[site][2]]));
-    concat.push_back(latt.NN[site][3] * denum);
-    concat.push_back(St.Ising[latt.NN[site][3]]);
-    if (1 == latt.sub[site]) {
-        concat.push_back(latt.NNN[site][0] * denum);
-        concat.push_back(double(St.Ising[latt.NNN[site][0]]));
-        concat.push_back(latt.NNN[site][2] * denum);
-        concat.push_back(double(St.Ising[latt.NNN[site][2]]));
-    } else {
-        concat.push_back(latt.NNN[site][1] * denum);
-        concat.push_back(double(St.Ising[latt.NNN[site][1]]));
-        concat.push_back(latt.NNN[site][3] * denum);
-        concat.push_back(double(St.Ising[latt.NNN[site][3]]));
-    }
-    return concat;
-}
-
-std::vector<double> SquareIceGame::MetropolisJudgement() {
-  std::vector<double> reward;
-  reward.resize(num_reward_types);
+double SquareIceGame::MetropolisJudgement() {
   const double N = MC_info.Num_sites;
+  double score = 0.0;
 
   // Metropolis algorithm
   double delta_E = getDiffEnergy();
   double weight = exp(-delta_E / S0.get_temperature() );
   double dice = uni01_sampler();
+  int status;
 
   unsigned int state_change = 0;
   for (int site = 0; site < MC_info.Num_sites; ++site) {
@@ -425,21 +366,25 @@ std::vector<double> SquareIceGame::MetropolisJudgement() {
      }
   }
 
-  reward[1] = state_change / N;
-  reward[2] = delta_E;
-  reward[3] = weight;
+  double state_change_ratio = state_change / double(action_queue.size());
 
   if (delta_E < 0) {
     go_to_St();
-    reward[0] = 1.0;
+    status = 1;
   } else if (dice < weight) {
     go_to_St();
     // rewards
-    reward[0] = 0.0;
+    status = 0;
   } else {
-    reward[0] = -1.0;
+    status = -1;
   } 
-  return reward;
+
+  if (status >=0 && state_change > 1) {
+      score = state_change;
+      // but too small value
+  }
+
+  return score;
 } // end of metropolis
 
 void SquareIceGame::Reset() {
@@ -450,126 +395,111 @@ void SquareIceGame::Reset() {
     go_to_S0();
 }
 
-bool SquareIceGame::ActDirection(int action) {
-    bool isIceRule = false;
+double SquareIceGame::Act(int action) {
+    double reward = default_reward;
     /* move functions */
     switch (action) {
         case 0: 
-            isIceRule = go_right();
+            flip_right();
         break;
         case 1: 
-            isIceRule = go_down();
+            flip_down();
         break;
         case 2: 
-            isIceRule = go_left();
+            flip_left();
         break;
         case 3: 
-            isIceRule = go_up();
-        break;
-        default:
-        break;
-    }
-    /* evaluate this step */
-    // rewards vector + isMove 
-    // r[0]: acceptance status
-    // r[1]: fraction of difference
-    // r[2]: weights of boltzman factor
-    // r[3]: delta energy
-    // r[4]: 1 ice rule move
-    //
-    return isIceRule;
-}
-
-bool SquareIceGame::ActDirectionIce(int action) {
-    bool isIceRule = false;
-    /* move functions */
-    switch (action) {
-        case 0: 
-            isIceRule = go_nn_right();
-        break;
-        case 1: 
-            isIceRule = go_nn_down();
-        break;
-        case 2: 
-            isIceRule = go_nn_left();
-        break;
-        case 3: 
-            isIceRule = go_nn_up();
+            flip_up();
         break;
         case 4: 
-            isIceRule = go_nnn_up();
+            flip_next_up();
         break;
-        case 5:
-            isIceRule = go_nnn_down();
+        case 5: 
+            flip_next_down();
         break;
+
+        case 6:
+            reward = MetropolisJudgement();
+        break;
+
+        case 7:
+            flip_next_upper_right();
+        break;
+        case 8:
+            reward = MetropolisJudgement();
+        break;
+
+        case 9:
+            flip_left();
+        break;
+        case 10:
+            flip_up();
+        break;
+        case 11:
+            flip_next_up();
+        break;
+        case 12:
+            flip_next_down();
+        break;
+
+        case 13:
+            go_to_S0();
+        break;
+
         default:
         break;
     }
-    /* evaluate this step */
-    // rewards vector + isMove 
-    // r[0]: acceptance status
-    // r[1]: fraction of difference
-    // r[2]: weights of boltzman factor
-    // r[3]: delta energy
-    // r[4]: 1 ice rule move
-    //
-    return isIceRule;
+    // Add the action to the queue
+    action_queue.push_back(action);
+    return reward;
 }
 
-bool SquareIceGame::ActSpinSign(int action) {
-    bool isIceRule = false;
-    switch (action) {
-        case 0 :
-            isIceRule = go_same_spin_up();
-            break;
-        case 1:
-            isIceRule = go_same_spin_down();
-            break;
-        default:
-        break;
+int SquareIceGame::whichActionToFlipSite(int site) {
+    int action = -1;
+    if (site == latt.NN[agent_site][0]) {
+            action = 7;
+    }else if (site == latt.NN[agent_site][1]) {
+            action = 8;
+    }else if (site == latt.NN[agent_site][2]) {
+            action = 9;
+    }else if (site == latt.NN[agent_site][3]) {
+            action = 10;
+    }else if (site == latt.NNN[agent_site][0]) {
+            action = 11;
+    }else if (site == latt.NNN[agent_site][1]) {
+            action = 11;
+    }else if (site == latt.NNN[agent_site][2]) {
+            action = 12;
+    }else if (site == latt.NNN[agent_site][3]) {
+            action = 12;
+    } else {
+            std::cout << "Site is not in agent's neighborhoods\n";
     }
-    return isIceRule;
+    return action;
 }
 
-bool SquareIceGame::ActOneWay(int action) {
-    bool isIceRule = false;
-    /* move functions */
-    switch (action) {
-        case 0: 
-            isIceRule = go_nn_up();
-        break;
-        case 1: 
-            isIceRule = go_nn_right();
-        break;
-        case 2: 
-        // This action maybe crucial
-            isIceRule = go_nnn_down();
-        break;
-        default:
-        break;
+int SquareIceGame::whichActionToWalkSite(int site) {
+    int action = -1;
+    if (site == latt.NN[agent_site][0]) {
+            action = 0;
+    }else if (site == latt.NN[agent_site][1]) {
+            action = 1;
+    }else if (site == latt.NN[agent_site][2]) {
+            action = 2;
+    }else if (site == latt.NN[agent_site][3]) {
+            action = 3;
+    }else if (site == latt.NNN[agent_site][0]) {
+            action = 4;
+    }else if (site == latt.NNN[agent_site][1]) {
+            action = 4;
+    }else if (site == latt.NNN[agent_site][2]) {
+            action = 5;
+    }else if (site == latt.NNN[agent_site][3]) {
+            action = 5;
+    } else {
+            std::cout << "Site is not in agent's neighborhoods\n";
     }
-    /* evaluate this step */
-    // rewards vector + isMove 
-    // r[0]: acceptance status
-    // r[1]: fraction of difference
-    // r[2]: weights of boltzman factor
-    // r[3]: delta energy
-    // r[4]: 1 ice rule move
-    //
-    return isIceRule;
-}
-
-bool SquareIceGame::ActFlipSite(int site, int action) {
-    bool isFlip = false;
-    //if (action == 0) return isFlip;
-    //int onsite_spin = getSpin(site);
-    update_agent_site(site);
-    if (action == 1) {
-        // Flip the site
-        FlipOnSite();
-        isFlip = true;
-    }
-    return isFlip;
+    return action;
 }
 
 double SquareIceGame::getDiffEnergy() {
@@ -633,13 +563,23 @@ void SquareIceGame::seperate_up_or_down(int site) {
 }
 
 int SquareIceGame::FlipOnSite() {
-    FlipSite(agent_site);
-    walked_sites.push_back(agent_site);
-    ++visited_map[agent_site];
+    ++visited_counter_map[agent_site];
     // add to trajectory
+    if (0 == visited_map[agent_site]) {
+        visited_map[agent_site] = 1;
+    }
+    FlipSite(agent_site);
+    visited_queue.push_back(agent_site);
+    return agent_spin;
+}
+
+int SquareIceGame::StayOnSite() {
+    ++trajectory_counter_map[agent_site];
     if (0 == trajectory_map[agent_site]) {
         trajectory_map[agent_site] = 1;
     }
+    trajectory_queue.push_back(agent_site);
+
     return agent_spin;
 }
 
@@ -683,28 +623,33 @@ int SquareIceGame::FlipSite(int site) {
     return spin;
 }
 
-// Performance issues
-// seems legacy code
-void SquareIceGame::set_virt_configs(boost::python::list &ns) {
-    vector<int> newising;
-    for (int i=0; i < len(ns); ++i) {
-        newising.push_back(boost::python::extract<int>(ns[i]));
+// Not follow Ice rule (do not check spin sign)
+bool SquareIceGame::go_up() {
+    bool isMove = false;
+    int newsite;
+    if (1 == latt.sub[agent_site]) {
+        newsite = latt.NN[agent_site][3];
+    } else {
+        newsite = latt.NN[agent_site][3];
     }
-    St.Ising = newising;
+    if (getSpin(newsite) != agent_spin) isMove = true;
+    update_agent_site(newsite);
+    StayOnSite();
+    return isMove;
 }
 
 // Not follow Ice rule (do not check spin sign)
-bool SquareIceGame::go_right() {
+bool SquareIceGame::flip_up() {
     bool isMove = false;
-    int x = floor(agent_site % L);
-    int y = floor(agent_site / L);
-    x = PBD(x, 1);
-    int site = int(y * L + x);
-    int new_spin = getSpin(site);
-    if (new_spin == getAgentSpin()) {
-        isMove = true;
+    int newsite;
+    if (1 == latt.sub[agent_site]) {
+        newsite = latt.NN[agent_site][3];
+    } else {
+        newsite = latt.NN[agent_site][3];
     }
-    update_agent_site(site);
+    if (getSpin(newsite) != agent_spin) isMove = true;
+    update_agent_site(newsite);
+    StayOnSite();
     FlipOnSite();
     return isMove;
 }
@@ -712,31 +657,61 @@ bool SquareIceGame::go_right() {
 // Not follow Ice rule (do not check spin sign)
 bool SquareIceGame::go_down() {
     bool isMove = false;
-    int x = floor(agent_site % L);
-    int y = floor(agent_site / L);
-    y = PBD(y, 1);
-    int site = int(y * L + x);
-    int new_spin = getSpin(site);
-    if (new_spin == getAgentSpin()) {
-        isMove = true;
+    int newsite;
+    if (1 == latt.sub[agent_site]) {
+        newsite = latt.NN[agent_site][1];
+    } else {
+        newsite = latt.NN[agent_site][1];
     }
-    update_agent_site(site);
+    if (getSpin(newsite) != agent_spin) isMove = true;
+    update_agent_site(newsite);
+    StayOnSite();
+    return isMove;
+}
+
+// Not follow Ice rule (do not check spin sign)
+bool SquareIceGame::flip_down() {
+    bool isMove = false;
+    int newsite;
+    if (1 == latt.sub[agent_site]) {
+        newsite = latt.NN[agent_site][1];
+    } else {
+        newsite = latt.NN[agent_site][1];
+    }
+    if (getSpin(newsite) != agent_spin) isMove = true;
+    update_agent_site(newsite);
+    StayOnSite();
     FlipOnSite();
     return isMove;
 }
 
 // Not follow Ice rule (do not check spin sign)
-bool SquareIceGame::go_up() {
+bool SquareIceGame::go_right() {
     bool isMove = false;
-    int x = floor(agent_site % L);
-    int y = floor(agent_site / L);
-    y = PBD(y, -1);
-    int site = int(y * L + x);
-    int new_spin = getSpin(site);
-    if (new_spin == getAgentSpin()) {
-        isMove = true;
+    int newsite;
+    if (1 == latt.sub[agent_site]) {
+        newsite = latt.NN[agent_site][0];
+    } else {
+        newsite = latt.NN[agent_site][0];
     }
-    update_agent_site(site);
+    if (getSpin(newsite) != agent_spin) isMove = true;
+    update_agent_site(newsite);
+    StayOnSite();
+    return isMove;
+}
+
+// Not follow Ice rule (do not check spin sign)
+bool SquareIceGame::flip_right() {
+    bool isMove = false;
+    int newsite;
+    if (1 == latt.sub[agent_site]) {
+        newsite = latt.NN[agent_site][0];
+    } else {
+        newsite = latt.NN[agent_site][0];
+    }
+    if (getSpin(newsite) != agent_spin) isMove = true;
+    update_agent_site(newsite);
+    StayOnSite();
     FlipOnSite();
     return isMove;
 }
@@ -744,305 +719,250 @@ bool SquareIceGame::go_up() {
 // Not follow Ice rule (do not check spin sign)
 bool SquareIceGame::go_left() {
     bool isMove = false;
-    int x = floor(agent_site % L);
-    int y = floor(agent_site / L);
-    x = PBD(x, -1);
-    int site = int(y * L + x);
-    int new_spin = getSpin(site);
-    if (new_spin == getAgentSpin()) {
-        isMove = true;
+    int newsite;
+    if (1 == latt.sub[agent_site]) {
+        newsite = latt.NN[agent_site][2];
+    } else {
+        newsite = latt.NN[agent_site][2];
     }
-    update_agent_site(site);
+    if (getSpin(newsite) != agent_spin) isMove = true;
+    update_agent_site(newsite);
+    StayOnSite();
+    return isMove;
+}
+
+// Not follow Ice rule (do not check spin sign)
+bool SquareIceGame::flip_left() {
+    bool isMove = false;
+    int newsite;
+    if (1 == latt.sub[agent_site]) {
+        newsite = latt.NN[agent_site][2];
+    } else {
+        newsite = latt.NN[agent_site][2];
+    }
+    if (getSpin(newsite) != agent_spin) isMove = true;
+    update_agent_site(newsite);
+    StayOnSite();
     FlipOnSite();
     return isMove;
 }
 
-/*bool SquareIceGame::go_nn_left() {
+// Not follow Ice rule (do not check spin sign)
+bool SquareIceGame::go_next_up() {
     bool isMove = false;
-    int x = floor(agent_site % L);
-    int y = floor(agent_site / L);
-    x = PBD(x, -1);
-    int site = int(y * L + x);
-    int new_spin = getSpin(site);
-    if (new_spin == getAgentSpin()) {
-        isMove = true;
-    }
-    if(isMove) {
-        update_agent_site(site);
-        FlipOnSite();
-    }
-    return isMove;
-}*/
-
-/*bool SquareIceGame::go_nn_right() {
-    bool isMove = false;
-    int x = floor(agent_site % L);
-    int y = floor(agent_site / L);
-    x = PBD(x, 1);
-    int site = int(y * L + x);
-    int new_spin = getSpin(site);
-    if (new_spin == getAgentSpin()) {
-        isMove = true;
-    }
-    if (isMove) {
-        update_agent_site(site);
-        FlipOnSite();
-    }
-    return isMove;
-}*/
-
-bool SquareIceGame::go_nnn_down() {
-    bool isMove = false;
-    int site; 
+    int newsite;
     if (1 == latt.sub[agent_site]) {
-        site = latt.NNN[agent_site][2];
+        newsite = latt.NNN[agent_site][2];
     } else {
-        site = latt.NNN[agent_site][3];
+        newsite = latt.NNN[agent_site][3];
     }
-    int new_spin = getSpin(site);
-    if (new_spin == getAgentSpin()) {
-        isMove = true;
-    }
-    if (isMove) {
-        update_agent_site(site);
-        FlipOnSite();
-    }
+    if (getSpin(newsite) != agent_spin) isMove = true;
+    update_agent_site(newsite);
+    StayOnSite();
     return isMove;
 }
 
-bool SquareIceGame::go_nnn_up() {
+// Not follow Ice rule (do not check spin sign)
+bool SquareIceGame::flip_next_up() {
     bool isMove = false;
-    int site; 
+    int newsite;
     if (1 == latt.sub[agent_site]) {
-        site = latt.NNN[agent_site][0];
+        newsite = latt.NNN[agent_site][2];
     } else {
-        site = latt.NNN[agent_site][1];
+        newsite = latt.NNN[agent_site][3];
     }
-    int new_spin = getSpin(site);
-    if (new_spin == getAgentSpin()) {
-        isMove = true;
-    }
-    if (isMove) {
-        update_agent_site(site);
-        FlipOnSite();
-    }
+    if (getSpin(newsite) != agent_spin) isMove = true;
+    update_agent_site(newsite);
+    StayOnSite();
+    FlipOnSite();
     return isMove;
 }
 
-/*bool SquareIceGame::go_nn_down() {
+// Not follow Ice rule (do not check spin sign)
+bool SquareIceGame::go_next_down() {
     bool isMove = false;
-    int x = floor(agent_site % L);
-    int y = floor(agent_site / L);
-    y = PBD(y, 1);
-    int site = int(y * L + x);
-    int new_spin = getSpin(site);
-    if (new_spin == getAgentSpin()) {
-        isMove = true;
-    }
-    if (isMove) {
-        update_agent_site(site);
-        FlipOnSite();
-    }
-    return isMove;
-} */
-
-/*bool SquareIceGame::go_nn_up() {
-    bool isMove = false;
-    int x = floor(agent_site % L);
-    int y = floor(agent_site / L);
-    y = PBD(y, -1);
-    int site = int(y * L + x);
-    int new_spin = getSpin(site);
-    if (new_spin == getAgentSpin()) {
-        isMove = true;
-    }
-    if (isMove) {
-        update_agent_site(site);
-        FlipOnSite();
-    }
-    return isMove;
-}*/
-
-bool SquareIceGame::go_nn_up() {
-    bool isMove = false;
-    int up_site = latt.NN[agent_site][3]; // up site
-    int new_spin = getSpin(up_site);
-    if (new_spin == getAgentSpin()) {
-        isMove = true;
-    }
-    if (isMove) {
-        update_agent_site(up_site);
-        FlipOnSite();
-    }
-    return isMove;
-}
-
-bool SquareIceGame::go_nn_down() {
-    bool isMove = false;
-    int down_site = latt.NN[agent_site][1]; // down site
-    int new_spin = getSpin(down_site);
-    if (new_spin == getAgentSpin()) {
-        isMove = true;
-    }
-    if (isMove) {
-        update_agent_site(down_site);
-        FlipOnSite();
-    }
-    return isMove;
-}
-
-bool SquareIceGame::go_nn_left() {
-    bool isMove = false;
-    int left_site = latt.NN[agent_site][2]; // left  site
-    int new_spin = getSpin(left_site);
-    if (new_spin == getAgentSpin()) {
-        isMove = true;
-    }
-    if (isMove) {
-        update_agent_site(left_site);
-        FlipOnSite();
-    }
-    return isMove;
-}
-
-bool SquareIceGame::go_nn_right() {
-    bool isMove = false;
-    int right_site = latt.NN[agent_site][0]; // right site
-    int new_spin = getSpin(right_site);
-    if (new_spin == getAgentSpin()) {
-        isMove = true;
-    }
-    if (isMove) {
-        update_agent_site(right_site);
-        FlipOnSite();
-    }
-    return isMove;
-}
-
-bool SquareIceGame::go_same_spin_up() {
-    bool isMove = false;
-    // Find out nieghboring candidates
-    // 1. get directional up and nnn up site and spin
-    int upsite = latt.NN[agent_site][3];
-    int upspin = getSpin(upsite);
-    int onsite_spin = getSpin(agent_site);
-    int nnnupsite;
-    // depend on the tpye of sublattice, choose nnn up site
+    int newsite;
     if (1 == latt.sub[agent_site]) {
-        nnnupsite = latt.NNN[agent_site][0];
+        newsite = latt.NNN[agent_site][0];
     } else {
-        nnnupsite = latt.NNN[agent_site][1];
+        newsite = latt.NNN[agent_site][1];
     }
-    int nnnupspin = getSpin(nnnupsite);
-    // 2. 
-    if (upspin == onsite_spin) {
-        // update position map
-        update_agent_site(upsite);
-        FlipOnSite();
-        isMove = true;
-    } else if (nnnupspin == onsite_spin){
-        // update position map
-        update_agent_site(nnnupsite);
-        FlipOnSite();
-        isMove = true;
-    }
+    if (getSpin(newsite) != agent_spin) isMove = true;
+    update_agent_site(newsite);
+    StayOnSite();
     return isMove;
 }
 
-bool SquareIceGame::go_same_spin_down() {
+// Not follow Ice rule (do not check spin sign)
+bool SquareIceGame::flip_next_down() {
     bool isMove = false;
-    // Find out nieghboring candidates
-    // 1. get directional up and nnn up site and spin
-    int downsite = latt.NN[agent_site][1];
-    int nnndownsite;
-    // depend on the tpye of sublattice, choose nnn up site
+    int newsite;
     if (1 == latt.sub[agent_site]) {
-        nnndownsite = latt.NNN[agent_site][2];
+        newsite = latt.NNN[agent_site][0];
     } else {
-        nnndownsite = latt.NNN[agent_site][3];
+        newsite = latt.NNN[agent_site][1];
     }
-    int onsite_spin = getSpin(agent_site);
-    int downspin    = getSpin(downsite);
-    int nnndownspin = getSpin(nnndownsite);
-    // 2. 
-    if (downspin == onsite_spin) {
-        // update position map
-        update_agent_site(downsite);
-        FlipOnSite();
-        isMove = true;
-    } else if (nnndownspin == onsite_spin){
-        // update position map
-        update_agent_site(nnndownsite);
-        FlipOnSite();
-        isMove = true;
-    }
+    if (getSpin(newsite) != agent_spin) isMove = true;
+    update_agent_site(newsite);
+    StayOnSite();
+    FlipOnSite();
     return isMove;
 }
 
-bool SquareIceGame::go_spinup() {
+bool SquareIceGame::flip_next_upper_right() {
     bool isMove = false;
-    std::vector<int> nspins = getNeighborSpins(agent_site);
-    std::vector<int> nsites = getNeighborSites(agent_site);
-    for (std::vector<int>::size_type i = 1; i != nspins.size(); ++i) {
-        if (nspins[i] > 0) {
-            int newspin = getSpin(nsites[i]);
-            if (newspin == getAgentSpin()) {
-                isMove = true;
-            }
-            update_agent_site(nsites[i]);
-            FlipOnSite();
-            break;
-        }
-    }
+    int newsite = latt.NNN[agent_site][3];
+    if (getSpin(newsite) != agent_spin) isMove = true;
+    update_agent_site(newsite);
+    StayOnSite();
+    FlipOnSite();
     return isMove;
 }
 
-bool SquareIceGame::go_spindown() {
+bool SquareIceGame::flip_next_upper_left() {
     bool isMove = false;
-    std::vector<int> nspins = getNeighborSpins(agent_site);
-    std::vector<int> nsites = getNeighborSites(agent_site);
-    for (std::vector<int>::size_type i = 1; i != nspins.size(); ++i) {
-        if (nspins[i] < 0) {
-            int newspin = getSpin(nsites[i]);
-            if (newspin == getAgentSpin()) {
-                isMove = true;
-            }
-            update_agent_site(nsites[i]);
-            FlipOnSite();
-            break;
-        }
-    }
+    int newsite = latt.NNN[agent_site][2];
+    if (getSpin(newsite) != agent_spin) isMove = true;
+    update_agent_site(newsite);
+    StayOnSite();
+    FlipOnSite();
     return isMove;
 }
 
-bool SquareIceGame::is_short_closed() {
+bool SquareIceGame::flip_next_lower_left() {
+    bool isMove = false;
+    int newsite = latt.NNN[agent_site][1];
+    if (getSpin(newsite) != agent_spin) isMove = true;
+    update_agent_site(newsite);
+    StayOnSite();
+    FlipOnSite();
+    return isMove;
+}
+
+bool SquareIceGame::flip_next_lower_right() {
+    bool isMove = false;
+    int newsite = latt.NNN[agent_site][0];
+    if (getSpin(newsite) != agent_spin) isMove = true;
+    update_agent_site(newsite);
+    StayOnSite();
+    FlipOnSite();
+    return isMove;
+}
+
+bool SquareIceGame::isShortClosed() {
     bool is_closed = false;
-    if (std::find(visited_map.begin(), visited_map.end(), 2) != visited_map.end()) {
+    if (std::find(visited_counter_map.begin(), visited_counter_map.end(), 2) != visited_counter_map.end()) {
         is_closed = true;
+        csite = std::find(visited_counter_map.begin(), visited_counter_map.end(), 2) - visited_counter_map.begin();
+        std::cout << "Crossed site is " << csite << "\n";
     }
     return is_closed;
 }
 
-bool SquareIceGame::is_long_closed() {
+bool SquareIceGame::isLongClosed() {
     bool is_closed = false;
-    if (init_site >= 0 && init_site < MC_info.Num_sites) {
-        if (visited_map[init_site] >= 2 ) {
+    int head = visited_queue[0];
+    if (head >= 0 && head < MC_info.Num_sites) {
+        if (visited_counter_map[head] >= 2 ) {
             is_closed = true;
         }
     }
     return is_closed;
 }
 
+int SquareIceGame::popVisitedQueue() {
+    if (!visited_queue.empty()) {
+        int site = visited_queue.back();
+        visited_queue.pop_back();
+        return site;
+    } else {
+        return -1;
+    }
+}
+
+int SquareIceGame::popTrajectoryQueue() {
+    if (!trajectory_queue.empty()) {
+        int site = trajectory_queue.back();
+        trajectory_queue.pop_back();
+        return site;
+    } else {
+        return -1;
+    }
+}
+
+int SquareIceGame::popActionQueue() {
+    if (!action_queue.empty()) {
+        int act = action_queue.back();
+        action_queue.pop_back();
+        return act;
+    } else {
+        return -1;
+    }
+}
+
+int SquareIceGame::dual_action_flip(int action) {
+    int dual_action = -1;
+    switch (action) {
+        case 7: 
+            dual_action = 9;
+        break;
+        case 8: 
+            dual_action = 10;
+        break;
+        case 9: 
+            dual_action = 7;
+        break;
+        case 10: 
+            dual_action = 8;
+        break;
+        case 11: 
+            dual_action = 12;
+        break;
+        case 12: 
+            dual_action = 11;
+        break;
+        default:
+            dual_action = action;
+        break;
+    }
+    return dual_action;
+}
+
+int SquareIceGame::dual_action_walk(int action) {
+    int dual_action = -1;
+    switch (action) {
+        case 7: 
+            dual_action = 2;
+        break;
+        case 8: 
+            dual_action = 3;
+        break;
+        case 9: 
+            dual_action = 0;
+        break;
+        case 10: 
+            dual_action = 1;
+        break;
+        case 11: 
+            dual_action = 5;
+        break;
+        case 12: 
+            dual_action = 4;
+        break;
+    }
+    return dual_action;
+}
+
 bool SquareIceGame::ShortLoopUpdate() {
     bool is_updated = false;
-    if(is_short_closed()) {
+    if(isShortClosed()) {
         std::cout << "Short loop is closed!\n";
         // crossed site
-        int csite = std::find(visited_map.begin(), visited_map.end(), 2) - visited_map.begin();
+        int csite = std::find(visited_counter_map.begin(), visited_counter_map.end(), 2) - visited_counter_map.begin();
         // flip back those not in loop 
-        while(!walked_sites.empty()) {
-            int site = walked_sites.back();
-            walked_sites.pop_back();
+        while(!visited_queue.empty()) {
+            int site = visited_queue.back();
+            visited_queue.pop_back();
             std::cout << "pop out " << site << " sites\n";
             if (visited_map[csite] == 0) {
                 FlipSite(site);
@@ -1053,4 +973,29 @@ bool SquareIceGame::ShortLoopUpdate() {
         is_updated = true;
     }
     return is_updated;
+}
+
+int SquareIceGame::popShortLoopActionQueue() {
+    int action = -1;
+    //int dual_action = -1;
+    if (!trajectory_queue.empty()) {
+        //action = popActionQueue();
+        trajectory_queue.pop_back();
+        int prev_site = trajectory_queue.back();
+        trajectory_queue.pop_back();
+        int site = agent_site;
+        std::cout << "\tprevious site = " << prev_site << " and current site = " << site << "\n";
+        std::cout << "\tvisited[csite] = " << visited_counter_map[csite] << "\n";
+        if (visited_counter_map[csite] == 0) {
+            //dual_action = dual_action_flip(action);
+            action = whichActionToFlipSite(prev_site);
+            std::cout << "\tFlip back " << site << " site's spin\n";
+        } else {
+            //dual_action = dual_action_walk(action);
+            action = whichActionToWalkSite(prev_site);
+            std::cout << "\tWalk through " << site << " site's spin\n";
+        }
+        visited_counter_map[site]--;
+    }
+    return action;
 }
