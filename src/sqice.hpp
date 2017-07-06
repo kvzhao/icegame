@@ -29,7 +29,7 @@ using namespace boost::python;
 */
 // 
 
-enum DIR {UP, DOWN, LEFT, RIGHT, UPPER_LEFT, UPPER_RIGHT, LOWER_LEFT, LOWER_RIGHT};
+enum DIR {RIGHT, DOWN, LEFT, UP, LOWER_NEXT, UPPER_NEXT, LOWER_RIGHT, LOWER_LEFT, UPPER_LEFT, UPPER_RIGHT, NOWAY};
 
 
 class SQIceGame {
@@ -42,6 +42,9 @@ class SQIceGame {
         void InitModel();
         void SetTemperature(double T);
         void MCRun(int mcSteps);
+        void Draw(int dir_idx);
+        vector<double> Metropolis();
+        inline vector<int> GetCanvasMap() {return canvas_traj_map;};
 
         // 
 
@@ -50,30 +53,43 @@ class SQIceGame {
 
         void flip_site(int site);
         void flip_agent_site();
+        void flip_along_traj();
 
-        // return new site
+        // return new agent site
         int go(DIR dir);
+        DIR how_to_go(int site);
+        int icemove();
 
         void reset_maps();
 
-        /* get funcs */
         int get_neighbor_site_by_direction(DIR dir);
-        vector<int> neighbor_sites();
-        vector<int> neighbor_spins();
+        DIR get_direction_by_sites(int site, int next_site);
+        vector<int> get_neighbor_sites();
+        vector<int> get_neighbor_spins();
+        vector<int> get_neighbor_candidates();
 
         void set_agent_site(int site);
+        /* get funcs */
         int  get_agent_site();
+        int  get_agent_spin();
+        int get_spin(int site);
 
         // Test function
         void TEST();
-
 
     private:
         // private functions
         double _cal_energy_of_state(vector<int> &s);
         double _cal_defect_density_of_state(vector<int> &s);
-        int inline _pdb(int site, int d) {return ((site + d) % L + L) % L;};
+        int _cal_config_difference();
+        int inline _pdb(int site, int d, int l) {return ((site + d) % l + l) % l;};
+
         void _print_vector(vector<int> v);
+        bool _is_visited(int site);
+        bool _is_start_end_meets(int site);
+        bool _is_traj_continuous();
+        bool _is_long_loop();
+        bool _is_short_loop();
 
         // Physical System
         INFO sim_info;
@@ -87,34 +103,60 @@ class SQIceGame {
         double J1;
         vector<double> mag_fields;
 
+        unsigned int updated_counter;
+        unsigned int steps_counter;
+
+        // RL intefaces
+        int agent_site;
+        int init_agent_site;
+        vector<int> traj_sites;
+        vector<int> traj_norepeat;
+        vector<int> traj_spins;
+        vector<DIR> action_list;
+        vector<int> sites_counter;
+
+        // MAPS
         /* Current states */ 
         vector<int> state_0;
         vector<int> state_t;
         vector<int> state_tp1;
 
-        vector<int> traj_sites;
-        vector<int> traj_spins;
-
-        unsigned int updated_counter;
-
-        // RL intefaces
-        int agent_site;
-
         vector<int> agent_map;
+        vector<int> canvas_traj_map;
+        vector<int> canvas_spin_map;
+        vector<int> eng_map;
+        vector<int> diff_map;
 
         // utilities
         Timer tt;
 
 };
 
+// Converter for std::vector to python list
+template <class T>
+struct Vec2List {
+    static PyObject* convert (const std::vector<T> &vec) {
+        boost::python::list *l = new boost::python::list();
+        for (size_t i = 0; i < vec.size(); ++i)
+            (*l).append(vec[i]);
+        return l->ptr();
+    }
+};
+
 BOOST_PYTHON_MODULE(libicegame)
 {
     class_<INFO>("INFO", init<int, int, int, int, int, int, int, int>())
     ;
+
+    to_python_converter<std::vector<int, class std::allocator<int> >, Vec2List<int> >();
+    to_python_converter<std::vector<double, class std::allocator<double> >, Vec2List<double> >();
+
     class_<SQIceGame>("SQIceGame", init<INFO>())
         .def("init_model", &SQIceGame::InitModel)
         .def("set_temperature", &SQIceGame::SetTemperature)
         .def("mc_run", &SQIceGame::MCRun)
+        .def("draw", &SQIceGame::Draw)
+        .def("get_canvas_map", &SQIceGame::GetCanvasMap)
 
         .def("TEST", &SQIceGame::TEST)
     ;
