@@ -39,6 +39,14 @@ SQIceGame::SQIceGame (INFO info) : sim_info(info) {
     std::cout << "[GAME] Square Ice Game is created.\n";
 }
 
+bool SQIceGame::TimeOut() {
+    if (steps_counter >= N) {
+        return true;
+    } else {
+        return false;
+    }
+}
+
 void SQIceGame::reset_maps() {
     std::fill(sites_counter.begin(),
               sites_counter.end(), 0);

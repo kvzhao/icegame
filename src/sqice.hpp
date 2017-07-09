@@ -62,6 +62,8 @@ class SQIceGame {
         inline int GetUpdatedCounter() {return updated_counter;};
         inline vector<int> GetAcceptedLen() {return accepted_looplength;};
 
+        bool TimeOut();
+
         void update_ice_config();
         /// this function used fliiping ice config according to states?
 
@@ -198,6 +200,7 @@ BOOST_PYTHON_MODULE(libicegame)
         .def("update_config", &SQIceGame::UpdateConfig)
         .def("get_updated_counter", &SQIceGame::GetUpdatedCounter)
         .def("get_accepted_length", &SQIceGame::GetAcceptedLen)
+        .def("timeout", &SQIceGame::TimeOut)
 
         .def("TEST", &SQIceGame::TEST)
     ;
