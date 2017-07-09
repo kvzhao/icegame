@@ -107,6 +107,9 @@ class IceGameEnv(core.Env):
 
     def reset(self):
         self.sim.reset()
+    
+    def timeout(self):
+        self.sim.timeout()
 
     @property
     def agent_site(self):
