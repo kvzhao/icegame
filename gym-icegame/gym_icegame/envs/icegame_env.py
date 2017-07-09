@@ -96,7 +96,7 @@ class IceGameEnv(core.Env):
         else:
             reward = self._draw_rets_weighting(rets)
             # as usual
-        
+
         obs = self.get_obs()
         ## add timeout mechanism?
 
@@ -109,7 +109,7 @@ class IceGameEnv(core.Env):
 
     def reset(self):
         self.sim.reset()
-    
+
     def timeout(self):
         self.sim.timeout()
 
@@ -129,7 +129,6 @@ class IceGameEnv(core.Env):
         icemove_w = -0.004
         energy_w = -10.0
         defect_w = -10.0
-        print ('draw rets are {}'.format(rets))
         return icemove_w * rets[0] + energy_w * rets[1] + defect_w * rets[2]
 
     def render(self, mapname ='traj', mode='ansi', close=False):
@@ -173,7 +172,7 @@ class IceGameEnv(core.Env):
                          energy_map,
                          defect_map
         ], axis=self.stacked_axis)
-        
+
     @property
     def unwrapped(self):
         """Completely unwrap this env.
@@ -182,6 +181,6 @@ class IceGameEnv(core.Env):
         """
         return self
 
-    def _transf2d(self, s): 
+    def _transf2d(self, s):
         # do we need zero mean here?
         return np.array(s, dtype=np.float32).reshape([self.L, self.L])
