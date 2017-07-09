@@ -89,6 +89,8 @@ class IceGameEnv(core.Env):
                 reward = 1.0
                 self.sim.update_config()
                 self.sim.reset()
+                print ('\tTotal accepted number = {}'.format(self.sim.get_updated_counter()))
+                print ('\tAccepted loop length = {}'.format(self.sim.get_accepted_length()))
             else:
                 self.sim.reset()
                 reward = -0.8
