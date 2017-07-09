@@ -46,6 +46,7 @@ class IceGameEnv(core.Env):
                                   4 :   'lower_next',
                                   5 :   'upper_next',
                                   6 :   'metropolis',
+                                  7 :   'noop',
                                   })
 
         self.index_mapping = dict({
@@ -56,6 +57,7 @@ class IceGameEnv(core.Env):
                                   'lower_next' : 4,
                                   'upper_next' : 5,
                                   'metropolis' : 6,
+                                  'noop'       : 7,
                                   })
 
 
@@ -86,7 +88,7 @@ class IceGameEnv(core.Env):
                 print ('ACCEPTS!')
                 reward = 1.0
                 self.sim.update_config()
-                #self.render()
+                self.sim.reset()
             else:
                 self.sim.reset()
                 reward = -0.8
