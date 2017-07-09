@@ -78,32 +78,24 @@ class IceGameEnv(core.Env):
             self.sim.flip_trajectory()
             rets = self.sim.metropolis()
             metropolis_executed = True
-            print ('rets from metroplis {}'.format(rets))
         elif (0 <= action < 6) :
             rets = self.sim.draw(action)
-            print ('rets from draw {}'.format(rets))
 
         if (metropolis_executed):
             if rets[0] > 0 and rets[3] > 0:
                 print ('ACCEPTS!')
-                np.save('obs', self.get_obs())
                 reward = 1.0
                 self.sim.update_config()
-                self.render()
-                time.sleep(5)
+                #self.render()
             else:
-                np.save('robs', self.get_obs())
-                print ('Reject!')
                 self.sim.reset()
                 reward = -0.8
-            # 
             # reset or update
         else:
             reward = self._draw_rets_weighting(rets)
             # as usual
         
         obs = self.get_obs()
-        
         ## add timeout mechanism?
 
         return obs, reward, terminate, info
@@ -134,22 +126,6 @@ class IceGameEnv(core.Env):
         defect_w = -10.0
         print ('draw rets are {}'.format(rets))
         return icemove_w * rets[0] + energy_w * rets[1] + defect_w * rets[2]
-
-    def plot_obs(self):
-        obs = self.get_obs()
-        f, axarr = plt.subplots(1, 4)
-        axarr[0].imshow(obs[...,0], 'plasma', interpolation='None')
-        axarr[0].set_title('S1')
-        axarr[1].imshow((obs[...,1]), 'plasma', interpolation='None')
-        axarr[1].set_title('Agent Map')
-        axarr[2].imshow((obs[...,2]), 'plasma', interpolation='None')
-        axarr[2].set_title('Traj')
-        axarr[3].imshow((obs[...,3]), 'plasma', interpolation='None')
-        axarr[3].set_title('Eng Map')
-        f.subplots_adjust(hspace=0.3)
-        #f.show(bbox_inches='tight')
-        f.show()
-        #f.savefig('obs/{}.png'.format(self.sqice.running_counter), bbox_inches='tight')
 
     def render(self, mapname ='traj', mode='ansi', close=False):
         #of = StringIO() if mode == 'ansi' else sys.stdout
