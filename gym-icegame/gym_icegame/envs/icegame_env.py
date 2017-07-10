@@ -93,7 +93,10 @@ class IceGameEnv(core.Env):
                 print ('\tAccepted loop length = {}'.format(self.sim.get_accepted_length()))
             else:
                 self.sim.reset()
-                reward = -0.8
+                if (rets[3] > 0):
+                    reward = -0.8
+                else:
+                    reward = -1.0
                 terminate = True
             # reset or update
         else:
