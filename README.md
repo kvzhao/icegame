@@ -25,5 +25,6 @@ which depends on openai gym.
 
 
 ## TODO
-* Long and short loop detection mechansim
+* Long and short loop detection mechanism
+* Reward design
 
