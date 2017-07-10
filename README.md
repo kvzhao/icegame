@@ -7,9 +7,9 @@ Designed as an environments interacting with spin ice system.
 
 ### src
 
-''
+```
 make -j4; make icegame
-''
+```
 
 will generate libicegame.so which should be put under your execution folder.
 
@@ -17,9 +17,9 @@ will generate libicegame.so which should be put under your execution folder.
 
 Install python interface 
 
-''
+```
 python setup.py install
-''
+```
 
 which depends on openai gym.
 
