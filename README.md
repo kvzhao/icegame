@@ -23,3 +23,7 @@ python setup.py install
 
 which depends on openai gym.
 
+
+## TODO
+* Long and short loop detection mechansim
+
