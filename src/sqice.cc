@@ -80,6 +80,8 @@ void SQIceGame::update_state_to_config() {
         std::cout << "[GAME] Updated Succesfully!\n";
         updated_counter++; 
         accepted_looplength.push_back(diff);
+        // Avoid periodic timeout mechanism rule out preferable results
+        steps_counter = 0;
    } else {
         std::cout << "[GAME] Ice Config is RUINED. Restore.\n";
         ice_config.Ising = backup;
