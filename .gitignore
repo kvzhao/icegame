@@ -1,1 +1,13 @@
-*.o *.so mcrun SquareLattice info
+*.o 
+*.so 
+*.pyc
+*.npy
+mcrun 
+SquareLattice 
+info
+.DS_Store
+build
+test*
+gym_icegame.egg-info
+dist
+
