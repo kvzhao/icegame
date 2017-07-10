@@ -97,7 +97,6 @@ class IceGameEnv(core.Env):
                     reward = -0.8
                 else:
                     reward = -1.0
-                terminate = True
             # reset or update
         else:
             reward = self._draw_rets_weighting(rets)

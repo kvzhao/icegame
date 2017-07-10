@@ -41,6 +41,7 @@ SQIceGame::SQIceGame (INFO info) : sim_info(info) {
 
 bool SQIceGame::TimeOut() {
     if (steps_counter >= N) {
+        steps_counter = 0;
         return true;
     } else {
         return false;
@@ -64,7 +65,6 @@ void SQIceGame::reset_maps() {
     traj_spins.clear();
     traj_norepeat.clear();
 
-    steps_counter = 0;
 }
 
 void SQIceGame::update_state_to_config() {
@@ -90,7 +90,7 @@ void SQIceGame::update_state_to_config() {
 
 void SQIceGame::UpdateConfig() {
     update_state_to_config();
-    //?
+    //? reset some counters and maps
 }
 
 void SQIceGame::restore_config_to_state() {
