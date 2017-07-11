@@ -130,7 +130,7 @@ class IceGameEnv(core.Env):
         return self.index_mapping
 
     def _draw_rets_weighting(self, rets):
-        icemove_w = 0.002
+        icemove_w = 0.0
         energy_w = -10.0
         defect_w = -10.0
         return icemove_w * rets[0] + energy_w * rets[1] + defect_w * rets[2]
