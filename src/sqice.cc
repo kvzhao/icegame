@@ -560,7 +560,27 @@ void SQIceGame::TEST(){
     std::cout << "\twhose upper next site is " << get_neighbor_site_by_direction(UPPER_NEXT) << "\n";
     std::cout << "\twhose lower next site is " << get_neighbor_site_by_direction(LOWER_NEXT) << "\n";
     std::cout << "/=========================================/\n";
-    long_loop_algorithm();
+    //long_loop_algorithm();
+    //flip_along_traj(traj_norepeat);
+    Draw(0);
+    Draw(0);
+    Draw(0);
+    if (_is_short_loop()) {
+        std::cout << "WRONG, NO SHORT LOOP!\n";
+    }
+    Draw(0);
+    Draw(0);
+    Draw(1);
+    Draw(2);
+    if (_is_short_loop()) {
+        std::cout << "WRONG, NO SHORT LOOP!\n";
+    }
+    Draw(3);
+    if (_is_short_loop()) {
+        std::cout << "CORRECT, SHORT LOOP!\n";
+    } else {
+        std::cout << "WRONG, SHOULD FIND SHORT LOOP!\n";
+    }
 
     /*
     Draw(0);
@@ -714,6 +734,16 @@ bool SQIceGame::_is_traj_continuous() {
     return cont;
 }
 
+bool SQIceGame::_is_traj_intersect() {
+    bool meet = false;
+    std::vector<int>::iterator p = std::find(sites_counter.begin(), 
+                                             sites_counter.end(), 2);
+    if (p != sites_counter.end()) {
+        meet = true;
+    }
+    return meet;
+}
+
 int SQIceGame::_cal_config_difference() {
     int diff_counter = 0;
     for (size_t i = 0 ; i < N; i++) {
@@ -727,11 +757,16 @@ int SQIceGame::_cal_config_difference() {
 
 bool SQIceGame::_is_long_loop() {
     bool loop_occur = false;
+    /*
+        Check agent is visited init_site again, the the loop is closed (continous)
+    */
+    loop_occur = _is_start_end_meets(agent_site);
     return loop_occur;
 }
 
 bool SQIceGame::_is_short_loop() {
     bool loop_occur = false;
+    loop_occur = _is_traj_intersect();
     return loop_occur;
 }
 

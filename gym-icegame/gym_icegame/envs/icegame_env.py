@@ -106,6 +106,70 @@ class IceGameEnv(core.Env):
 
         return obs, reward, terminate, rets
 
+    def step_auto(self, action):
+        terminate = False
+        reward = 0.0
+        obs = None
+        rets = [0.0, 1.0, 1.0]
+        metropolis_executed = False
+
+        '''
+            1. detection stage
+                if dd & de == 0:
+                    flip long loop
+                    run metropolis
+                if short loop detected:
+                    flip short loop
+                    run metropolis
+                else:
+                    walk
+            2. reward eval stage
+                if metropolis executed:
+                    reward with accpetance or not
+                if as usual:
+                    reward is calculated by dE and dD
+        '''
+        
+        # DETECTION
+        if (0<= action < 6):
+            # ignore other action idxes
+            rets = self.sim.draw(action)
+        dE = rets[1]
+        dD = rets[2]
+            
+        if (dE == 0.0 and dD == 0.0):
+            self.sim.flip_trajectory()
+            rets = self.sim.metropolis()
+            metropolis_executed = True
+        #TODO: Short loop detection
+        
+        # EVALUATION
+
+        if (metropolis_executed):
+            if rets[0] > 0 and rets[3] > 0:
+                print ('ACCEPTS!')
+                reward = 1.0
+                self.sim.update_config()
+                self.sim.reset()
+                print ('\tTotal accepted number = {}'.format(self.sim.get_updated_counter()))
+                print ('\tAccepted loop length = {}'.format(self.sim.get_accepted_length()))
+            else:
+                self.sim.reset()
+                if (rets[3] > 0):
+                    reward = -0.8
+                else:
+                    reward = -1.0
+            # reset or update
+        else:
+            reward = self._draw_rets_weighting(rets)
+            # as usual
+
+        # RETURN
+
+        obs = self.get_obs()
+        return obs, reward, terminate, rets
+        
+
     # Start function used for agent learing
     def start(self, init_site):
         init_agent_site = self.sim.start(init_site)

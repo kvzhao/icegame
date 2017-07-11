@@ -70,6 +70,7 @@ class SQIceGame {
         void flip_site(int site);
         void flip_agent_site();
         void flip_along_traj(const vector<int> &traj);
+        void flip_along_short_traj(const vector<int> &traj);
 
         // return new agent site
         int go(DIR dir);
@@ -113,6 +114,7 @@ class SQIceGame {
         double _cal_stdev(const vector<int> &s);
         bool _is_visited(int site);
         bool _is_traj_continuous();
+        bool _is_traj_intersect();
         bool _is_start_end_meets(int site);
         bool _is_long_loop();
         bool _is_short_loop();
