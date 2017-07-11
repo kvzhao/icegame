@@ -26,5 +26,8 @@ which depends on openai gym.
 
 ## TODO
 * Long and short loop detection mechanism
-* Reward design
+* <s>Reward design</s>
+* Area reward
+* Save loop config when accepted
+* Short loop flip trajectory
 
