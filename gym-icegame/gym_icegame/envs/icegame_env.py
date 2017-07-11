@@ -72,7 +72,6 @@ class IceGameEnv(core.Env):
         terminate = False
         reward = 0.0
         obs = None
-        info = []
         rets = [0.0, 0.0, 0.0]
         metropolis_executed = False
 
@@ -105,7 +104,7 @@ class IceGameEnv(core.Env):
         obs = self.get_obs()
         ## add timeout mechanism?
 
-        return obs, reward, terminate, info
+        return obs, reward, terminate, rets
 
     # Start function used for agent learing
     def start(self, init_site):
