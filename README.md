@@ -24,6 +24,26 @@ python setup.py install
 which depends on openai gym.
 
 
+### Game Scenario
+
+#### actions
+* Directional action (up, down, left, right, next up, next down) 6 operations
+
+Two options: 
+* Metropolis button
+* Auto-detection
+
+#### rewards
+
+* Step-wise reward
+```
+    r = - 10.0 * (energy difference + defect density)
+```
+* Accepted reward
+```
+    r = +1.0
+```
+
 ## TODO
 * Long and short loop detection mechanism
 * <s>Reward design</s>
