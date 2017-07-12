@@ -44,7 +44,7 @@ class SQIceGame {
         void SetTemperature(double T);
         void MCRun(int mcSteps);
         vector<double> Draw(int dir_idx);
-        void IceMove(int act_idx);
+        int IceMoveIdx();
 
         vector<double> Metropolis();
         inline void FlipTrajectory() {flip_along_traj(traj_norepeat);};
@@ -192,7 +192,7 @@ BOOST_PYTHON_MODULE(libicegame)
         .def("reset", &SQIceGame::Reset)
         .def("mc_run", &SQIceGame::MCRun)
         .def("draw", &SQIceGame::Draw)
-        .def("icemove", &SQIceGame::IceMove)
+        .def("icemove_index", &SQIceGame::IceMoveIdx)
         .def("get_agent_site", &SQIceGame::GetAgentSite)
         .def("get_canvas_map", &SQIceGame::GetCanvasMap)
         .def("get_state_t_map", &SQIceGame::GetStateTMap)

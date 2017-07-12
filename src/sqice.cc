@@ -302,30 +302,16 @@ vector<double> SQIceGame::Draw(int dir_idx) {
     return rets;
 }
 
-void SQIceGame::IceMove(int act_idx) {
+int SQIceGame::IceMoveIdx() {
     int dir_idx; 
     int agent_spin = get_agent_spin();
-
-    switch (act_idx) {
-        // go spin up
-        case 0:
-            if (agent_spin > 0) {
-                dir_idx = how_to_go(icemove(true));
-            } else {
-                dir_idx = how_to_go(icemove(false));
-            }
-            Draw(dir_idx);
-        break;
-        // go spin down
-        case 1:
-            if (agent_spin < 0) {
-                dir_idx = how_to_go(icemove(true));
-            } else {
-                dir_idx = how_to_go(icemove(false));
-            }
-            Draw(dir_idx);
-        break;
+    if (agent_spin > 0) {
+        // if agent spin up, then chose spin down as candidates
+        dir_idx = how_to_go(icemove(false));
+    } else {
+        dir_idx = how_to_go(icemove(false));
     }
+    return dir_idx;
 }
 
 int SQIceGame::go(DIR dir) {

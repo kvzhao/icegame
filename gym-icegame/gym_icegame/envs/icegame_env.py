@@ -88,7 +88,7 @@ class IceGameEnv(core.Env):
                 print ('ACCEPTS!')
                 reward = 1.0
                 self.sim.update_config()
-                with open(self.ofilename, 'w') as f:
+                with open(self.ofilename, 'a') as f:
                     f.write('{}\n'.format(self.sim.get_trajectory()))
                     print ('\tSave loop configuration to file')
                 print ('\tTotal accepted number = {}'.format(self.sim.get_updated_counter()))
@@ -102,7 +102,7 @@ class IceGameEnv(core.Env):
                     reward = -1.0
             # reset or update
         else:
-            reward = self._draw_rets_weighting(rets)
+            reward = self._stepwise_weighted_returns(rets)
             # as usual
 
         obs = self.get_obs()
@@ -155,7 +155,7 @@ class IceGameEnv(core.Env):
                 reward = 1.0
                 self.sim.update_config()
                 print (self.sim.get_trajectory())
-                with open(self.ofilename, 'w') as f:
+                with open(self.ofilename, 'a') as f:
                     f.write('{}\n'.format(self.sim.get_trajectory()))
                     print ('\tSave loop configuration to file')
                 print ('\tTotal accepted number = {}'.format(self.sim.get_updated_counter()))
@@ -169,13 +169,16 @@ class IceGameEnv(core.Env):
                     reward = -1.0
             # reset or update
         else:
-            reward = self._draw_rets_weighting(rets)
+            reward = self._stepwise_weighted_returns(rets)
             # as usual
 
         # RETURN
 
         obs = self.get_obs()
         return obs, reward, terminate, rets
+
+    def step_binary(self, action):
+        pass
         
 
     # Start function used for agent learing
@@ -201,11 +204,14 @@ class IceGameEnv(core.Env):
     def name_action_mapping(self):
         return self.index_mapping
 
-    def _draw_rets_weighting(self, rets):
+    def _stepwise_weighted_returns(self, rets):
         icemove_w = 0.0
         energy_w = -10.0
         defect_w = -10.0
         return icemove_w * rets[0] + energy_w * rets[1] + defect_w * rets[2]
+
+    def sample_icemove_action_index(self):
+        return self.sim.icemove_index()
 
     def render(self, mapname ='traj', mode='ansi', close=False):
         #of = StringIO() if mode == 'ansi' else sys.stdout
