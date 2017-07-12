@@ -30,4 +30,5 @@ which depends on openai gym.
 * Area reward
 * Save loop config when accepted
 * Short loop flip trajectory
+* <s>Save loop configuration</s>
 

@@ -66,6 +66,7 @@ class IceGameEnv(core.Env):
         self.observation_space = spaces.Box(low=-1.0, high=1.0, shape=(self.L, self.L, 4))
         self.reward_range = (-1, 1)
 
+        self.ofilename = 'loop_config.log'
         self.stacked_axis = 2
 
     def step(self, action):
@@ -87,9 +88,12 @@ class IceGameEnv(core.Env):
                 print ('ACCEPTS!')
                 reward = 1.0
                 self.sim.update_config()
-                self.sim.reset()
+                with open(self.ofilename, 'w') as f:
+                    f.write('{}\n'.format(self.sim.get_trajectory()))
+                    print ('\tSave loop configuration to file')
                 print ('\tTotal accepted number = {}'.format(self.sim.get_updated_counter()))
                 print ('\tAccepted loop length = {}'.format(self.sim.get_accepted_length()))
+                self.sim.reset()
             else:
                 self.sim.reset()
                 if (rets[3] > 0):
@@ -150,9 +154,13 @@ class IceGameEnv(core.Env):
                 print ('ACCEPTS!')
                 reward = 1.0
                 self.sim.update_config()
-                self.sim.reset()
+                print (self.sim.get_trajectory())
+                with open(self.ofilename, 'w') as f:
+                    f.write('{}\n'.format(self.sim.get_trajectory()))
+                    print ('\tSave loop configuration to file')
                 print ('\tTotal accepted number = {}'.format(self.sim.get_updated_counter()))
                 print ('\tAccepted loop length = {}'.format(self.sim.get_accepted_length()))
+                self.sim.reset()
             else:
                 self.sim.reset()
                 if (rets[3] > 0):

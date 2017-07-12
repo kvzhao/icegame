@@ -61,6 +61,7 @@ class SQIceGame {
 
         inline int GetUpdatedCounter() {return updated_counter;};
         inline vector<int> GetAcceptedLen() {return accepted_looplength;};
+        inline vector<int> GetTrajectory() {return traj_norepeat;};
 
         bool TimeOut();
 
@@ -202,6 +203,7 @@ BOOST_PYTHON_MODULE(libicegame)
         .def("update_config", &SQIceGame::UpdateConfig)
         .def("get_updated_counter", &SQIceGame::GetUpdatedCounter)
         .def("get_accepted_length", &SQIceGame::GetAcceptedLen)
+        .def("get_trajectory", &SQIceGame::GetTrajectory)
         .def("timeout", &SQIceGame::TimeOut)
 
         .def("TEST", &SQIceGame::TEST)
