@@ -83,6 +83,8 @@ class SAWCanvasEnv(core.Env):
         if (intersect):
             terminate = True
             reward = self.failure_penalty
+            print ('Penetration depth = {}'.format(self.step_counter))
+
         if(self.complete_check()):
             reward = +1.0
             terminate = True
