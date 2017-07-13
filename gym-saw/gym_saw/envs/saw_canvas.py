@@ -54,7 +54,7 @@ class SAWCanvasEnv(core.Env):
         self._flip_agent_site()
     
     def reset(self):
-        self.canvas = -np.ones((self.L, self.L), dtype=np.float32)
+        self.canvas = -np.ones((self.L, self.L, 1), dtype=np.float32)
         self.site_counter = np.zeros((self.L, self.L), dtype=np.int32)
         self.traj_actions = []
         self.traj_sites = []
