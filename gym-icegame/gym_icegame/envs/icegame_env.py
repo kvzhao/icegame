@@ -8,8 +8,6 @@ import numpy as np
 import random
 from libicegame import SQIceGame, INFO
 
-#import matplotlib.pyplot as plt
-
 import time
 
 rnum = np.random.randint
