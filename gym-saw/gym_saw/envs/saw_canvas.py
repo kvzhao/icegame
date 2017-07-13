@@ -124,6 +124,7 @@ class SAWCanvasEnv(core.Env):
         if (self.site_counter[self.agent_site] >= 1):
             visited = True
         self.canvas[self.agent_site] *= -1
+        self.site_counter[self.agent_site] += 1
         return visited
 
     def _pdb(self, s, d, l):
