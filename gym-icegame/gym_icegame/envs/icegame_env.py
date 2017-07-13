@@ -186,6 +186,7 @@ class IceGameEnv(core.Env):
 
     def reset(self):
         self.sim.reset()
+        return self.get_obs()
 
     def timeout(self):
         return self.sim.timeout()

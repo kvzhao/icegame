@@ -61,6 +61,8 @@ class SAWCanvasEnv(core.Env):
         self.step_counter = 0
         # start from origin
         self.start_agent((0, 0))
+
+        return self.get_obs()
     
     def complete_check(self):
         done = False
