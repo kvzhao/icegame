@@ -11,7 +11,7 @@ class SAWCanvasEnv(core.Env):
         self.L = L
         self.N = self.L ** 2
 
-        self.canvas = - np.ones((self.L, self.L, 1), dtype=np.float32)
+        self.canvas = - np.ones((self.L, self.L), dtype=np.float32)
         self.site_counter = np.zeros((self.L, self.L), dtype=np.int32)
 
         self.traj_sites = []
@@ -54,7 +54,7 @@ class SAWCanvasEnv(core.Env):
         self._flip_agent_site()
     
     def reset(self):
-        self.canvas = -np.ones((self.L, self.L, 1), dtype=np.float32)
+        self.canvas = -np.ones((self.L, self.L), dtype=np.float32)
         self.site_counter = np.zeros((self.L, self.L), dtype=np.int32)
         self.traj_actions = []
         self.traj_sites = []
@@ -148,6 +148,7 @@ class SAWCanvasEnv(core.Env):
     
     def get_obs(self):
         return self.canvas
+        #return self.canvas.reshape(self.L, self.L, 1)
 
     @property
     def unwrapped(self):
