@@ -11,7 +11,7 @@ class SAWCanvasEnv(core.Env):
         self.L = L
         self.N = self.L ** 2
 
-        self.canvas = - np.ones((self.L, self.L), dtype=np.float32)
+        self.canvas = - np.ones((self.L, self.L, 1), dtype=np.float32)
         self.site_counter = np.zeros((self.L, self.L), dtype=np.int32)
 
         self.traj_sites = []
