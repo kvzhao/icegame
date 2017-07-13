@@ -24,16 +24,22 @@ python setup.py install
 which depends on openai gym.
 
 
-### Game Scenario
+## Game Scenario
+Draw a proposed loop, then summit.
 
-#### actions
-* Directional action (up, down, left, right, next up, next down) 6 operations
+### actions
+* Directional action: (up, down, left, right, next up, next down) 6 operations in total
 
 Two options: 
-* Metropolis button
-* Auto-detection
+* Metropolis button: 
+* Loop Auto-detection: 
 
-#### rewards
+function called by env.step(action_index), here we provide severl step()
+* step()
+* step_auto()
+* step_binary()
+
+### rewards
 
 * Step-wise reward
 ```
@@ -44,11 +50,23 @@ Two options:
     r = +1.0
 ```
 
+### observations
+stacked scene
+* spin configuration
+* trajectory
+* energy map
+* defect map
+in format of `NHWC`
+
+
+## Callable interface from libicegame
+List in sqice.hpp
+
 ## TODO
 * Long and short loop detection mechanism
 * <s>Reward design</s>
 * Area reward
-* Save loop config when accepted
+* <s>Save loop config when accepted</s>
 * Short loop flip trajectory
-* <s>Save loop configuration</s>
+* demo codes
 
