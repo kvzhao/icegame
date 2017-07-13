@@ -41,6 +41,7 @@ class SAWCanvasEnv(core.Env):
         self.stepwise_reward = +0.01
         self.failure_penalty = -1.0
         self.step_counter = 0
+        self.max_depth = 0
 
         self.ofilename = 'traj_cfg.log'
     
@@ -83,7 +84,10 @@ class SAWCanvasEnv(core.Env):
         if (intersect):
             terminate = True
             reward = self.failure_penalty
-            print ('Penetration depth = {}'.format(self.step_counter))
+            if (self.max_depth < self.step_counter):
+                self.max_depth = self.step_counter
+                print ('Penetration depth = {}'.format(self.step_counter))
+                self.render()
 
         if(self.complete_check()):
             reward = +1.0
