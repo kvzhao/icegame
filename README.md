@@ -50,6 +50,13 @@ function called by env.step(action_index), here we provide severl step()
     r = +1.0
 ```
 
+```
+rets[0]: +1/-1 accpet/reject
+rets[1]: difference of totoal mean energy 
+rets[2]: difference of defect density
+rets[3]: ratio of configuration difference
+```
+
 ### observations
 stacked scene
 * spin configuration
@@ -68,5 +75,6 @@ List in sqice.hpp
 * Area reward
 * <s>Save loop config when accepted</s>
 * Short loop flip trajectory
+* Fix ambiguous `rets`
 * demo codes
 
