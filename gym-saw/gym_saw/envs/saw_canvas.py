@@ -6,6 +6,8 @@ from gym import error, spaces, utils, core
 import numpy as np
 import sys
 
+rnum = np.random.randint
+
 class SAWCanvasEnv(core.Env):
     def __init__(self, L):
         self.L = L
@@ -61,7 +63,7 @@ class SAWCanvasEnv(core.Env):
         self.traj_sites = []
         self.step_counter = 0
         # start from origin
-        self.start_agent((0, 0))
+        self.start_agent((rnum(self.L), rnum(self.L)))
 
         return self.get_obs()
     
