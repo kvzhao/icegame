@@ -4,7 +4,6 @@ import gym
 from gym import error, spaces, utils, core
 
 import numpy as np
-import pickle
 import sys
 
 rnum = np.random.randint
@@ -46,7 +45,7 @@ class SAWCanvasEnv(core.Env):
         self.step_counter = 0
         self.max_depth = 0
 
-        self.ofilename = 'walking.pickle'
+        self.ofilename = 'walking.log'
     
     def start(self, init_site=None):
         if (init_site == None):
@@ -71,8 +70,8 @@ class SAWCanvasEnv(core.Env):
     
     def complete_check(self):
         done = False
-        ## cannot find single "-1"
-        if not (-1 in self.canvas):
+        coverage_ration = 0.75
+        if (np.sum(self.canvas) >= coverage_ration * self.N):
             done = True
         return done
     
@@ -91,9 +90,10 @@ class SAWCanvasEnv(core.Env):
             if (self.max_depth < self.step_counter):
                 self.max_depth = self.step_counter
                 print ('Penetration depth = {}'.format(self.step_counter))
-                ## TODO: Change to Json
-                with open(self.ofilename, 'ab') as f:
-                    pickle.dump(self.traj_sites, f)
+                ## TODO: Write to Json
+                print (self.traj_sites)
+                with open(self.ofilename, 'a') as f:
+                    f.write('{}\n'.format(self.traj_sites))
                 self.render()
 
         if(self.complete_check()):
@@ -161,8 +161,8 @@ class SAWCanvasEnv(core.Env):
         sys.stdout.write(screen)
     
     def get_obs(self):
-        return self.canvas
-        #return self.canvas.reshape(self.L, self.L, 1)
+        #return self.canvas
+        return self.canvas.reshape(self.L, self.L, 1)
 
     @property
     def unwrapped(self):
