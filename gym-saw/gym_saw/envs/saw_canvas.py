@@ -4,6 +4,7 @@ import gym
 from gym import error, spaces, utils, core
 
 import numpy as np
+import pickle
 import sys
 
 rnum = np.random.randint
@@ -45,7 +46,7 @@ class SAWCanvasEnv(core.Env):
         self.step_counter = 0
         self.max_depth = 0
 
-        self.ofilename = 'traj_cfg.log'
+        self.ofilename = 'walking.pickle'
     
     def start(self, init_site=None):
         if (init_site == None):
@@ -55,6 +56,7 @@ class SAWCanvasEnv(core.Env):
     def start_agent(self, init_site):
         self.agent_site = init_site
         self._flip_agent_site()
+        self.site_counter[self.agent_site] += 1
     
     def reset(self):
         self.canvas = -np.ones((self.L, self.L), dtype=np.float32)
@@ -89,6 +91,9 @@ class SAWCanvasEnv(core.Env):
             if (self.max_depth < self.step_counter):
                 self.max_depth = self.step_counter
                 print ('Penetration depth = {}'.format(self.step_counter))
+                ## TODO: Change to Json
+                with open(self.ofilename, 'ab') as f:
+                    pickle.dump(self.traj_sites, f)
                 self.render()
 
         if(self.complete_check()):
