@@ -94,10 +94,8 @@ class IceGameEnv(core.Env):
                 self.sim.reset()
             else:
                 self.sim.reset()
-                if (rets[3] > 0):
+                if (rets[3] == 0.0):
                     reward = -0.8
-                else:
-                    reward = -1.0
             # reset or update
         else:
             reward = self._stepwise_weighted_returns(rets)
@@ -108,6 +106,7 @@ class IceGameEnv(core.Env):
 
         return obs, reward, terminate, rets
 
+    ## DEPRECATED!! 
     def step_auto(self, action):
         terminate = False
         reward = 0.0
@@ -158,13 +157,11 @@ class IceGameEnv(core.Env):
                     print ('\tSave loop configuration to file')
                 print ('\tTotal accepted number = {}'.format(self.sim.get_updated_counter()))
                 print ('\tAccepted loop length = {}'.format(self.sim.get_accepted_length()))
-                self.sim.reset()
+                self.sim.clear_buffer()
             else:
-                self.sim.reset()
-                if (rets[3] > 0):
+                self.sim.clear_buffer()
+                if (rets[3] ==  0):
                     reward = -0.8
-                else:
-                    reward = -1.0
             # reset or update
         else:
             reward = self._stepwise_weighted_returns(rets)
@@ -175,17 +172,15 @@ class IceGameEnv(core.Env):
         obs = self.get_obs()
         return obs, reward, terminate, rets
 
-    def step_binary(self, action):
-        pass
-        
-
     # Start function used for agent learing
     def start(self, init_site):
         init_agent_site = self.sim.start(init_site)
         assert(init_site == init_agent_site)
 
     def reset(self):
-        self.sim.reset()
+        ## clear buffer and set new start of agent
+        self.sim.clear_buffer()
+        self.start(rnum(self.N))
         return self.get_obs()
 
     def timeout(self):
@@ -204,9 +199,9 @@ class IceGameEnv(core.Env):
         return self.index_mapping
 
     def _stepwise_weighted_returns(self, rets):
-        icemove_w = 0.0
+        icemove_w = 0.005
         energy_w = -10.0
-        defect_w = -10.0
+        defect_w = 0.0
         return icemove_w * rets[0] + energy_w * rets[1] + defect_w * rets[2]
 
     def sample_icemove_action_index(self):

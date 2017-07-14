@@ -49,7 +49,7 @@ class SQIceGame {
         vector<double> Metropolis();
         inline void FlipTrajectory() {flip_along_traj(traj_norepeat);};
         int Start(int init_site);
-        void Reset();
+        void ClearBuffer();
 
         void UpdateConfig();
 
@@ -189,7 +189,7 @@ BOOST_PYTHON_MODULE(libicegame)
         .def("init_model", &SQIceGame::InitModel)
         .def("set_temperature", &SQIceGame::SetTemperature)
         .def("start", &SQIceGame::Start)
-        .def("reset", &SQIceGame::Reset)
+        .def("clear_buffer", &SQIceGame::ClearBuffer)
         .def("mc_run", &SQIceGame::MCRun)
         .def("draw", &SQIceGame::Draw)
         .def("icemove_index", &SQIceGame::IceMoveIdx)

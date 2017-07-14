@@ -146,7 +146,7 @@ int SQIceGame::Start(int init_site) {
     return agent_site;
 }
 
-void SQIceGame::Reset() {
+void SQIceGame::ClearBuffer() {
     reset_maps();
     init_agent_site = agent_site;
     restore_config_to_state();
