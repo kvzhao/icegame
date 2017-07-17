@@ -131,13 +131,17 @@ class IceGameEnv(core.Env):
                     reward is calculated by dE and dD
         '''
         
-        # DETECTION
-        if (0<= action < 6):
+        # restrict action from 0 to 4: {up, down, left, right}
+        if (0<= action < 4):
             # ignore other action idxes
             rets = self.sim.draw(action)
+        else:
+            print ('Accept only directional action: up/down/left/right!')
+
         dE = rets[1]
         dD = rets[2]
             
+        ### Think about
         if (dE == 0.0 and dD == 0.0):
             self.sim.flip_trajectory()
             rets = self.sim.metropolis()
@@ -145,7 +149,6 @@ class IceGameEnv(core.Env):
         #TODO: Short loop detection
         
         # EVALUATION
-
         if (metropolis_executed):
             if rets[0] > 0 and rets[3] > 0:
                 print ('ACCEPTS!')
@@ -166,8 +169,10 @@ class IceGameEnv(core.Env):
         else:
             reward = self._stepwise_weighted_returns(rets)
             # as usual
-
         # RETURN
+        ## check timeout!
+        if (self.timeout()):
+            terminate = True
 
         obs = self.get_obs()
         return obs, reward, terminate, rets
@@ -199,10 +204,12 @@ class IceGameEnv(core.Env):
         return self.index_mapping
 
     def _stepwise_weighted_returns(self, rets):
-        icemove_w = 0.005
-        energy_w = -10.0
+        icemove_w = 0.000
+        energy_w = -1.0
         defect_w = 0.0
-        return icemove_w * rets[0] + energy_w * rets[1] + defect_w * rets[2]
+        baseline = 0.009765625
+        scaling = 2.0
+        return (icemove_w * rets[0] + energy_w * rets[1] + defect_w * rets[2] + baseline) * scaling
 
     def sample_icemove_action_index(self):
         return self.sim.icemove_index()
@@ -256,6 +263,9 @@ class IceGameEnv(core.Env):
                 gym.Env: The base non-wrapped gym.Env instance
         """
         return self
+
+    def sysinfo(self):
+        print ('')
 
     def _transf2d(self, s):
         # do we need zero mean here?
