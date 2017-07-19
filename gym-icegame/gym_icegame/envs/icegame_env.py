@@ -64,14 +64,20 @@ class IceGameEnv(core.Env):
         self.observation_space = spaces.Box(low=-1.0, high=1.0, shape=(self.L, self.L, 4))
         self.reward_range = (-1, 1)
 
-        self.ofilename = 'loop_config.log'
+        # output file
+        self.ofilename = 'loop_sites.log'
+        # render file
+        self.rfilename = 'loop_renders.log'
         self.stacked_axis = 2
+
+        ## counts reset()
+        self.episode_counter = 0
 
     def step(self, action):
         terminate = False
         reward = 0.0
         obs = None
-        rets = [0.0, 0.0, 0.0]
+        rets = [0.0, 0.0, 0.0, 0.0]
         metropolis_executed = False
 
         if (action == 6):
@@ -84,16 +90,20 @@ class IceGameEnv(core.Env):
         if (metropolis_executed):
             if rets[0] > 0 and rets[3] > 0:
                 print ('ACCEPTS!')
-                reward = 1.0
                 self.sim.update_config()
+                loop_length = self.sim.get_accepted_length()[-1]
+                reward = 1.0 * (loop_length / 4.0) # reward with different length by normalizing with len 4 elements
                 with open(self.ofilename, 'a') as f:
                     f.write('{}\n'.format(self.sim.get_trajectory()))
                     print ('\tSave loop configuration to file')
                 print ('\tTotal accepted number = {}'.format(self.sim.get_updated_counter()))
-                print ('\tAccepted loop length = {}'.format(self.sim.get_accepted_length()))
+                print ('\tAccepted loop len = {}'.format(loop_length))
+                print ('\tTotal accepted loop length = {}'.format(self.sim.get_accepted_length()))
+                self.render()
                 self.sim.clear_buffer()
             else:
                 self.sim.clear_buffer()
+                # Avoid running metropolis at start
                 if (rets[3] == 0.0):
                     reward = -0.8
             # reset or update
@@ -186,6 +196,7 @@ class IceGameEnv(core.Env):
         ## clear buffer and set new start of agent
         self.sim.clear_buffer()
         self.start(rnum(self.N))
+        self.episode_counter += 1
         return self.get_obs()
 
     def timeout(self):
@@ -207,7 +218,7 @@ class IceGameEnv(core.Env):
         icemove_w = 0.000
         energy_w = -1.0
         defect_w = 0.0
-        baseline = 0.009765625
+        baseline = 0.009765625 ## 1 / 1024
         scaling = 2.0
         return (icemove_w * rets[0] + energy_w * rets[1] + defect_w * rets[2] + baseline) * scaling
 
@@ -242,7 +253,10 @@ class IceGameEnv(core.Env):
                     screen += ' O '
             screen += '|\n'
         screen += '\t+' + self.L * '---' + '+\n'
-        sys.stdout.write(screen)
+        #sys.stdout.write(screen)
+        with open(self.rfilename, 'a') as f:
+            f.write('Episode: {}\n'.format(self.episode_counter))
+            f.write('{}\n'.format(screen))
 
     def get_obs(self):
         config_map = self._transf2d(self.sim.get_state_t_map())
