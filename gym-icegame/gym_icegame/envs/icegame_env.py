@@ -89,7 +89,8 @@ class IceGameEnv(core.Env):
         # metropolis judgement
         if (metropolis_executed):
             if rets[0] > 0 and rets[3] > 0:
-                print ('PROPOSAL ACCEPTED!')
+                self.sim.update_config()
+                print ('[GAME] PROPOSAL ACCEPTED!')
                 loop_length = self.sim.get_accepted_length()[-1]
                 reward = 1.0 * (loop_length / 4.0) # reward with different length by normalizing with len 4 elements
                 with open(self.ofilename, 'a') as f:
@@ -97,8 +98,8 @@ class IceGameEnv(core.Env):
                     print ('\tSave loop configuration to file')
                 print ('\tTotal accepted number = {}'.format(self.sim.get_updated_counter()))
                 print ('\tAccepted loop len = {}'.format(loop_length))
-                print ('\tTotal accepted loop length = {}'.format(self.sim.get_accepted_length()))
-                self.sim.update_config()
+                print ('\tAgent walks {} steps in episode, action counters: {}'.format(self.sim.get_ep_step_counter(), self.sim.get_ep_action_counters()))
+                #print ('\tTotal accepted loop length = {}'.format(self.sim.get_accepted_length()))
                 self.render()
                 self.sim.clear_buffer()
             else:
@@ -162,8 +163,9 @@ class IceGameEnv(core.Env):
         s = None
         if (mapname == 'traj'):
             s = self._transf2d(self.sim.get_canvas_map())
-        elif (mapname == 'state'):
-            s = self._transf2d(self.sim.get_state_t_map())
+        start = self.sim.get_start_point()
+        start = (int(start/self.L), int(start%self.L))
+        s[start] = 3
         screen = '\r'
         screen += '\n\t'
         screen += '+' + self.L * '---' + '+\n'
@@ -182,11 +184,13 @@ class IceGameEnv(core.Env):
                     screen += ' @ '
                 elif spin == -2:
                     screen += ' O '
+                elif spin == +3:
+                    screen += ' x '
             screen += '|\n'
         screen += '\t+' + self.L * '---' + '+\n'
         #sys.stdout.write(screen)
         with open(self.rfilename, 'a') as f:
-            f.write('Episode: {}, global step = {} \n'.format(self.episode_counter, self.sim.get_total_steps()))
+            f.write('Episode: {}, global step = {}\n'.format(self.episode_counter, self.sim.get_total_steps()))
             f.write('{}\n'.format(screen))
 
     def get_obs(self):
