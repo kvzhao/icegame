@@ -6,7 +6,7 @@ from gym import error, spaces, utils, core
 import sys
 import numpy as np
 import random
-from libicegame import SQIceGame, INFO
+from icegame import SQIceGame, INFO
 
 import time
 
@@ -44,7 +44,6 @@ class IceGameEnv(core.Env):
                                   4 :   'lower_next',
                                   5 :   'upper_next',
                                   6 :   'metropolis',
-                                  7 :   'noop',
                                   })
 
         self.index_mapping = dict({
@@ -55,7 +54,6 @@ class IceGameEnv(core.Env):
                                   'lower_next' : 4,
                                   'upper_next' : 5,
                                   'metropolis' : 6,
-                                  'noop'       : 7,
                                   })
 
 
@@ -80,6 +78,7 @@ class IceGameEnv(core.Env):
         rets = [0.0, 0.0, 0.0, 0.0]
         metropolis_executed = False
 
+        ## execute different type of actions
         if (action == 6):
             self.sim.flip_trajectory()
             rets = self.sim.metropolis()
@@ -87,10 +86,10 @@ class IceGameEnv(core.Env):
         elif (0 <= action < 6) :
             rets = self.sim.draw(action)
 
+        # metropolis judgement
         if (metropolis_executed):
             if rets[0] > 0 and rets[3] > 0:
-                print ('ACCEPTS!')
-                self.sim.update_config()
+                print ('PROPOSAL ACCEPTED!')
                 loop_length = self.sim.get_accepted_length()[-1]
                 reward = 1.0 * (loop_length / 4.0) # reward with different length by normalizing with len 4 elements
                 with open(self.ofilename, 'a') as f:
@@ -99,10 +98,12 @@ class IceGameEnv(core.Env):
                 print ('\tTotal accepted number = {}'.format(self.sim.get_updated_counter()))
                 print ('\tAccepted loop len = {}'.format(loop_length))
                 print ('\tTotal accepted loop length = {}'.format(self.sim.get_accepted_length()))
+                self.sim.update_config()
                 self.render()
                 self.sim.clear_buffer()
             else:
                 self.sim.clear_buffer()
+                terminate = True
                 # Avoid running metropolis at start
                 if (rets[3] == 0.0):
                     reward = -0.8
@@ -116,77 +117,6 @@ class IceGameEnv(core.Env):
 
         return obs, reward, terminate, rets
 
-    ## DEPRECATED!! 
-    def step_auto(self, action):
-        terminate = False
-        reward = 0.0
-        obs = None
-        rets = [0.0, 1.0, 1.0]
-        metropolis_executed = False
-
-        '''
-            1. detection stage
-                if dd & de == 0:
-                    flip long loop
-                    run metropolis
-                if short loop detected:
-                    flip short loop
-                    run metropolis
-                else:
-                    walk
-            2. reward eval stage
-                if metropolis executed:
-                    reward with accpetance or not
-                if as usual:
-                    reward is calculated by dE and dD
-        '''
-        
-        # restrict action from 0 to 4: {up, down, left, right}
-        if (0<= action < 4):
-            # ignore other action idxes
-            rets = self.sim.draw(action)
-        else:
-            print ('Accept only directional action: up/down/left/right!')
-
-        dE = rets[1]
-        dD = rets[2]
-            
-        ### Think about
-        if (dE == 0.0 and dD == 0.0):
-            self.sim.flip_trajectory()
-            rets = self.sim.metropolis()
-            metropolis_executed = True
-        #TODO: Short loop detection
-        
-        # EVALUATION
-        if (metropolis_executed):
-            if rets[0] > 0 and rets[3] > 0:
-                print ('ACCEPTS!')
-                reward = 1.0
-                self.sim.update_config()
-                print (self.sim.get_trajectory())
-                with open(self.ofilename, 'a') as f:
-                    f.write('{}\n'.format(self.sim.get_trajectory()))
-                    print ('\tSave loop configuration to file')
-                print ('\tTotal accepted number = {}'.format(self.sim.get_updated_counter()))
-                print ('\tAccepted loop length = {}'.format(self.sim.get_accepted_length()))
-                self.sim.clear_buffer()
-            else:
-                self.sim.clear_buffer()
-                if (rets[3] ==  0):
-                    reward = -0.8
-            # reset or update
-        else:
-            reward = self._stepwise_weighted_returns(rets)
-            # as usual
-        # RETURN
-        ## check timeout!
-        if (self.timeout()):
-            terminate = True
-
-        obs = self.get_obs()
-        return obs, reward, terminate, rets
-
     # Start function used for agent learing
     def start(self, init_site):
         init_agent_site = self.sim.start(init_site)
@@ -194,8 +124,9 @@ class IceGameEnv(core.Env):
 
     def reset(self):
         ## clear buffer and set new start of agent
-        self.sim.clear_buffer()
-        self.start(rnum(self.N))
+        site = rnum(self.N)
+        init_site = self.restart(site)
+        assert(init_site == site)
         self.episode_counter += 1
         return self.get_obs()
 
@@ -255,7 +186,7 @@ class IceGameEnv(core.Env):
         screen += '\t+' + self.L * '---' + '+\n'
         #sys.stdout.write(screen)
         with open(self.rfilename, 'a') as f:
-            f.write('Episode: {}\n'.format(self.episode_counter))
+            f.write('Episode: {}, global step = {} \n'.format(self.episode_counter, self.sim.get_total_steps()))
             f.write('{}\n'.format(screen))
 
     def get_obs(self):

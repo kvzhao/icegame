@@ -16,8 +16,11 @@ SQIceGame::SQIceGame (INFO info) : sim_info(info) {
     J1 = 1.0;
     agent_site = -1;
     init_agent_site = -1;
-    steps_counter = 0;
+
     updated_counter = 0;
+    num_total_steps = 0;
+    num_episode = 0;
+    same_ep_counter = 0;
 
     mag_fields.push_back(h1_t);
     mag_fields.push_back(h2_t);
@@ -27,61 +30,71 @@ SQIceGame::SQIceGame (INFO info) : sim_info(info) {
     state_0.resize(N, 0);
     state_t.resize(N, 0);
     state_tp1.resize(N, 0);
-    sites_counter.resize(N, 0);
 
-    agent_map.resize(N, 0);
-    canvas_traj_map.resize(N, 0);
-    canvas_spin_map.resize(N, 0);
+    ep_step_counter = 0;
+    ep_site_counters.resize(N, 0);
+    ep_action_counters.resize(7, 0);
+    action_statistics.resize(7, 0); // not reset
+
+    agent_map.resize(N, 0.0);
+    canvas_traj_map.resize(N, 0.0);
+    canvas_spin_map.resize(N, 0.0);
     energy_map.resize(N, 0.0);
     defect_map.resize(N, 0.0);
-    diff_map.resize(N, 0);
+    diff_map.resize(N, 0.0);
 
     std::cout << "[GAME] Square Ice Game is created.\n";
 }
 
 bool SQIceGame::TimeOut() {
-    if (steps_counter >= N) {
-        steps_counter = 0;
+    if (ep_step_counter >= N) {
+        ep_step_counter = 0;
         return true;
     } else {
         return false;
     }
 }
 
-void SQIceGame::reset_maps() {
-    std::fill(sites_counter.begin(),
-              sites_counter.end(), 0);
+void SQIceGame::clear_maps() {
     std::fill(canvas_traj_map.begin(),
-              canvas_traj_map.end(), 0);
+              canvas_traj_map.end(), 0.0);
     std::fill(agent_map.begin(),
-              agent_map.end(), 0);
+              agent_map.end(), 0.0);
     std::fill(canvas_spin_map.begin(),
-              canvas_spin_map.end(), 0);
+              canvas_spin_map.end(), 0.0);
     std::fill(energy_map.begin(),
               energy_map.end(), 0.0);
     std::fill(defect_map.begin(),
               defect_map.end(), 0.0);
-    traj_sites.clear();
-    traj_spins.clear();
-    traj_norepeat.clear();
+    std::fill(diff_map.begin(), diff_map.end(), 0.0);
+}
 
+void SQIceGame::clear_counters() {
+    std::fill(ep_site_counters.begin(), ep_site_counters.end(), 0);
+    std::fill(ep_action_counters.begin(), ep_action_counters.end(), 0);
+    ep_step_counter = 0; 
+}
+
+void SQIceGame::clear_lists() {
+    agent_site_trajectory.clear();
+    agent_spin_trajectory.clear();
+    ep_action_list.clear();
 }
 
 void SQIceGame::update_state_to_config() {
-    int diff = _cal_config_difference();
+    int diff = _cal_config_t_difference();
     vector<int> backup = ice_config.Ising;
     ice_config.Ising = state_t;
     state_0 = state_t;
     state_tp1 = state_t;
     // state_0 = state_t 
     // ... Sanity check!
-    if (   _cal_defect_density_of_state(ice_config.Ising) == 0.0 \
+    if ( _cal_defect_density_of_state(ice_config.Ising) == 0.0 \
         && _cal_energy_of_state(ice_config.Ising) == -1.0) {
         std::cout << "[GAME] Updated Succesfully!\n";
         updated_counter++; 
         accepted_looplength.push_back(diff);
         // Avoid periodic timeout mechanism rule out preferable results
-        steps_counter = 0;
    } else {
         std::cout << "[GAME] Ice Config is RUINED. Restore.\n";
         ice_config.Ising = backup;
@@ -147,22 +160,51 @@ int SQIceGame::Start(int init_site) {
 }
 
 void SQIceGame::ClearBuffer() {
-    reset_maps();
-    init_agent_site = agent_site;
+    clear_all();
+    same_ep_counter++;
+}
+
+// Reset and Restart
+int SQIceGame::Restart(int init_site) {
+    ClearBuffer();
+    Start(init_site);
+    same_ep_counter = 0;
+    num_episode++;
+    return agent_site;
+}
+
+void SQIceGame::clear_all() {
+    clear_maps();
+    clear_lists();
+    clear_counters();
     restore_config_to_state();
+    init_agent_site = agent_site;
+}
+
+int SQIceGame::GetStartPoint() {
+    if (agent_site_trajectory.size() != 0) {
+        if (init_agent_site != agent_site_trajectory[0]) {
+            std::cout << "[SQIceGame] Sanity check fails! init_agent_site != trajectory[0]!\n";
+        }
+    }
+    return init_agent_site;
 }
 
 // member functions 
 vector<double> SQIceGame::Metropolis() {
+    action_statistics[6]++;
     vector<double> rets(4);
     bool is_accept = false;
     double E0 = _cal_energy_of_state(state_0);
     double Et = _cal_energy_of_state(state_t);
     double dE = Et - E0;
     double dd = _cal_defect_density_of_state(state_t);
-    int diff_counts = _cal_config_difference();
+    int diff_counts = _cal_config_t_difference();
     double diff_ratio = diff_counts / double(N);
     if (dE == 0.0) {
+        if (dd != 0.0) {
+            std::cout << "[SQIceGame]: State has no energy changes but contains defects! Sanity checking fails!\n";
+        }
         is_accept = true;
         rets[0] = 1.0;
     } else {
@@ -201,10 +243,16 @@ void SQIceGame::flip_along_traj(const vector<int> &traj) {
 void SQIceGame::set_agent_site(int site) {
     if (site >= 0 && site < N) {
         agent_site = site;
-        if (traj_sites.size() == 0) {
+        // If starting point
+        if (agent_site_trajectory.size() == 0) {
+            agent_site_trajectory.push_back(site);
+            agent_spin_trajectory.push_back(get_spin(site));
             init_agent_site = site;
-            traj_sites.push_back(site);
-            traj_norepeat.push_back(site);
+        } else if (!_is_visited(site)) {
+            agent_site_trajectory.push_back(site);
+            agent_spin_trajectory.push_back(get_spin(site));
+        } else {
+            // visited site and do nothing
         }
     } else {
         std::cout << "[GAME] WORNING, Set Agent on Illegal Site!\n";
@@ -228,70 +276,34 @@ int SQIceGame::get_agent_spin() {
 }
 
 vector<double> SQIceGame::Draw(int dir_idx) {
-    int site = -1;
+    // The function handles canvas and calculates step-wise returns
     int curt_spin = get_agent_spin();
-    int next_spin = 0;
-    vector<double> rets(3);
+    vector<double> rets(4);
+    // get where to go
+    int next_spin = get_spin(get_neighbor_site_by_direction(dir_idx));
     // move agent
-    switch (dir_idx) {
-        case RIGHT:
-            next_spin = get_spin(get_neighbor_site_by_direction(RIGHT));
-            site = go(RIGHT);
-        break;
-        case DOWN:
-            next_spin = get_spin(get_neighbor_site_by_direction(DOWN));
-            site = go(DOWN);
-        break;
-        case LEFT:
-            next_spin = get_spin(get_neighbor_site_by_direction(LEFT));
-            site = go(LEFT);
-        break;
-        case UP:
-            next_spin = get_spin(get_neighbor_site_by_direction(UP));
-            site = go(UP);
-        break;
-        case UPPER_RIGHT:
-            next_spin = get_spin(get_neighbor_site_by_direction(UPPER_RIGHT));
-            site = go(UPPER_RIGHT);
-        break;
-        case LOWER_RIGHT:
-            next_spin = get_spin(get_neighbor_site_by_direction(LOWER_RIGHT));
-            site = go(LOWER_RIGHT);
-        break;
-        case LOWER_LEFT:
-            next_spin = get_spin(get_neighbor_site_by_direction(LOWER_LEFT));
-            site = go(LOWER_LEFT);
-        break;
-        case UPPER_LEFT:
-            next_spin = get_spin(get_neighbor_site_by_direction(UPPER_LEFT));
-            site = go(UPPER_LEFT);
-        break;
-        case UPPER_NEXT:
-            next_spin = get_spin(get_neighbor_site_by_direction(UPPER_NEXT));
-            site = go(UPPER_NEXT);
-        break;
-        case LOWER_NEXT:
-            next_spin = get_spin(get_neighbor_site_by_direction(LOWER_NEXT));
-            site = go(LOWER_NEXT);
-        break;
+    int site = go(dir_idx);
+
+    // draw on canvas TODO: no repeats!
+    if (canvas_traj_map[site] == 0.0) {
+        canvas_traj_map[site] = 1.0;
     }
-    // draw on canvas
-    if (canvas_traj_map[site] == 1) {
-        canvas_traj_map[site] = 0;
-    } else {
-        canvas_traj_map[site] = 1;
-    }
-    canvas_spin_map[site] = state_t[site];
+    canvas_spin_map[site] = double(state_t[site]);
 
     double dE = _cal_energy_of_state(state_tp1) - _cal_energy_of_state(state_t);
     double dd = _cal_defect_density_of_state(state_tp1);
 
-    if (curt_spin == next_spin ) {
+    // TODO: compare t and tp1
+    double dC = _count_config_difference(state_t, state_tp1) / double(N);
+
+    if (curt_spin == next_spin) {
         rets[0] = -1.0;
     } else {
         rets[0] = +1.0;
     }
-    rets[1] = dE; rets[2] = dd;
+    rets[1] = dE; 
+    rets[2] = dd;
+    rets[3] = dC;
 
     #ifdef DEBUG 
     std::cout << "  current spin " << curt_spin << " , next spin " << next_spin << "\n";
@@ -302,47 +314,35 @@ vector<double> SQIceGame::Draw(int dir_idx) {
     return rets;
 }
 
-int SQIceGame::IceMoveIdx() {
-    int dir_idx; 
-    int agent_spin = get_agent_spin();
-    if (agent_spin > 0) {
-        // if agent spin up, then chose spin down as candidates
-        dir_idx = how_to_go(icemove(false));
-    } else {
-        dir_idx = how_to_go(icemove(false));
-    }
-    return dir_idx;
-}
-
-int SQIceGame::go(DIR dir) {
+int SQIceGame::go(int dir) {
+    // this function handles moveing and actions
     int old_site = agent_site;
     int new_site = get_neighbor_site_by_direction(dir);
+
+    // set agent will take care of trajectory
     set_agent_site(new_site);
-    if (!_is_visited(new_site)) {
-        traj_norepeat.push_back(new_site);
-    }
-    traj_spins.push_back(get_spin(new_site));
-    traj_sites.push_back(new_site);
-    action_list.push_back(dir);
-    // no repeated trajectory
 
-    // agent map
-    agent_map[old_site] = 0;
-    agent_map[new_site] = 1; 
+    ep_action_counters[dir]++;
+    ep_action_list.push_back(dir);
+    action_statistics[dir]++;
 
-    if (sites_counter[agent_site] < 1) {
+    // agent map TODO: use trajectory 
+    agent_map[old_site] = 0.0;
+    agent_map[new_site] = 1.0; 
+
+    if (ep_site_counters[agent_site] < 1) {
+        // ignore repeatance
         state_tp1[agent_site] *= -1;
     }
-
-    steps_counter++;
-    sites_counter[agent_site]++;
+    num_total_steps++;
+    ep_step_counter++;
+    ep_site_counters[agent_site]++;
 
     return agent_site;
 }
 
-DIR SQIceGame::how_to_go(int site) {
-    DIR dir = NOWAY;
-    dir = get_direction_by_sites(agent_site, site);
+int SQIceGame::how_to_go(int site) {
+    int dir = get_direction_by_sites(agent_site, site);
     return dir;
 }
 
@@ -411,114 +411,109 @@ vector<int> SQIceGame::get_neighbor_candidates(bool same_spin) {
     return candidates;
 }
 
-int SQIceGame::get_neighbor_site_by_direction(DIR dir) {
+int SQIceGame::get_neighbor_site_by_direction(int dir) {
     int site = agent_site;
-    if (dir == RIGHT) {
+    if (dir == 0) {
             site = latt.NN[site][0];
-    } else if (dir == DOWN) {
+    } else if (dir == 1) {
             site = latt.NN[site][1];
-    } else if (dir == LEFT) {
+    } else if (dir == 2) {
             site = latt.NN[site][2];
-    } else if (dir == UP) { 
+    } else if (dir == 3) { 
             site = latt.NN[site][3];
-    } else if (dir == LOWER_RIGHT) {
-            site = latt.NNN[site][0];
-    } else if (dir == LOWER_LEFT) {
-            site = latt.NNN[site][1];
-    } else if (dir == UPPER_LEFT) {
-            site = latt.NNN[site][2];
-    } else if (dir == UPPER_RIGHT) {
-            site = latt.NNN[site][3];
-    } else if (dir == LOWER_NEXT) {
+    } else if (dir == 4) {
         if (latt.sub[site] == 1) {
             site = latt.NNN[site][0];
         } else {
             site = latt.NNN[site][1];
         }
-    } else if (dir == UPPER_NEXT) {
+    } else if (dir == 5) {
         if (latt.sub[site] == 1) {
             site = latt.NNN[site][2];
         } else {
             site = latt.NNN[site][3];
         }
     }
+
+    #ifdef DEBUG
+    std::cout << "get_neighbor_site_by_direction(dir=" << dir << ") = " 
+              << site << " with agent site = " << agent_site << " \n";
+    #endif
     return site;
 }
 
-DIR SQIceGame::get_direction_by_sites(int site, int next_site) {
-    DIR dir = NOWAY;
+int SQIceGame::get_direction_by_sites(int site, int next_site) {
     int right_site = latt.NN[site][0];
     int left_site = latt.NN[site][2];
     int up_site = latt.NN[site][3];
     int down_site = latt.NN[site][1];
-    int lower_right_site = latt.NNN[site][0];
-    int lower_left_site  = latt.NNN[site][1];
-    int upper_left_site  = latt.NNN[site][2];
-    int upper_right_site = latt.NNN[site][3];
+    int upper_next_site = -1;
+    int lower_next_site = -1;
+    if (latt.sub[site] == 1) {
+        lower_next_site = latt.NNN[site][0];
+        upper_next_site = latt.NNN[site][2];
+    } else {
+        lower_next_site = latt.NNN[site][1];
+        upper_next_site = latt.NNN[site][3];
+    }
 
+    int dir = -1;
     // check next state is in its neighbots
     if (next_site == right_site) {
-        dir = RIGHT;
+        dir = 0;
     } else if (next_site == left_site) {
-        dir = LEFT;
+        dir = 2;
     } else if (next_site == up_site) {
-        dir = UP;
+        dir = 3;
     } else if (next_site == down_site) {
-        dir  = DOWN;
-    } else if (next_site == upper_right_site) {
-        dir = UPPER_RIGHT;
-    } else if (next_site == lower_right_site) {
-        dir = LOWER_RIGHT;
-    } else if (next_site == lower_left_site) {
-        dir = LOWER_LEFT;
-    } else if (next_site == upper_left_site) {
-        dir = UPPER_LEFT;
+        dir  = 1;
+    } else if (next_site == upper_next_site) {
+        dir = 5;
+    } else if (next_site == lower_next_site) {
+        dir = 4;
     }
 
     #ifdef DEBUG
-    std::cout << "right site = " << right_site << "\n"
+    std::cout << "get_direction_by_sites(site=" << site << ", next=" << next_site << " ): its neighbors are "
+              << "right site = " << right_site << "\n"
               << "left site = " << left_site << "\n"
               << "up site = " << up_site << "\n"
               << "down site = " << down_site << "\n"
-              << "upper right site = " << upper_right_site << "\n"
-              << "lower right site = " << lower_right_site << "\n"
-              << "lower left  site = " << lower_left_site << "\n"
-              << "upper left  site = " << upper_left_site << "\n";
+              << "upper next site = " << upper_next_site << "\n"
+              << "lower next site = " << lower_next_site << "\n";
     #endif
 
     return dir;
 }
 
-vector<double> SQIceGame::GetEnergyMap() {
+object SQIceGame::GetEnergyMap() {
     for (uint i = 0; i < N; i++) {
         double se = 0.0;
-        se = _cal_energy_of_site(state_t, i);
-        energy_map[i] = se/6.0;
+        se = _cal_energy_of_site(state_tp1, i);
+        energy_map[i] = se / 6.0;
     }
-    return energy_map;
+    return float_wrap(energy_map);
 }
 
-vector<double> SQIceGame::GetStateTMap() {
+object SQIceGame::GetStateTMap() {
     vector<double> map(state_t.begin(), state_t.end());
-    return map;
+    return float_wrap(map);
 }
 
-vector<double> SQIceGame::GetCanvasMap() {
-    vector<double> map(canvas_traj_map.begin(),
-                        canvas_traj_map.end());
-    return map;
+object SQIceGame::GetCanvasMap() {
+    return float_wrap(canvas_traj_map);
 }
 
-vector<double> SQIceGame::GetDefectMap() {
+object SQIceGame::GetDefectMap() {
     for (uint i =0; i < N; i++) {
         double dd = 0.0;
         if (latt.sub[i] == 1) {
-            dd = state_t[i] + state_t[latt.NN[i][0]] + state_t[latt.NN[i][1]] + state_t[latt.NNN[i][0]];
+            dd = state_tp1[i] + state_tp1[latt.NN[i][0]] + state_tp1[latt.NN[i][1]] + state_tp1[latt.NNN[i][0]];
             dd /= 4.0;
         }
         defect_map[i] = dd;
     }
-    return defect_map;
+    return float_wrap(defect_map);
 }
 
 void SQIceGame::TEST(){
@@ -535,38 +530,17 @@ void SQIceGame::TEST(){
 
     std::cout << " init agent site = " << init_agent_site << "\n";
 
-    std::cout << "\twhose up site is " << get_neighbor_site_by_direction(UP) << "\n";
-    std::cout << "\twhose down site is " << get_neighbor_site_by_direction(DOWN) << "\n";
-    std::cout << "\twhose left site is " << get_neighbor_site_by_direction(LEFT) << "\n";
-    std::cout << "\twhose right site is " << get_neighbor_site_by_direction(RIGHT) << "\n";
-    std::cout << "\twhose upper right site is " << get_neighbor_site_by_direction(UPPER_RIGHT) << "\n";
-    std::cout << "\twhose lower right site is " << get_neighbor_site_by_direction(LOWER_RIGHT) << "\n";
-    std::cout << "\twhose lower left site is " << get_neighbor_site_by_direction(LOWER_LEFT) << "\n";
-    std::cout << "\twhose upper left site is " << get_neighbor_site_by_direction(UPPER_LEFT) << "\n";
-    std::cout << "\twhose upper next site is " << get_neighbor_site_by_direction(UPPER_NEXT) << "\n";
-    std::cout << "\twhose lower next site is " << get_neighbor_site_by_direction(LOWER_NEXT) << "\n";
     std::cout << "/=========================================/\n";
     //long_loop_algorithm();
     //flip_along_traj(traj_norepeat);
     Draw(0);
     Draw(0);
     Draw(0);
-    if (_is_short_loop()) {
-        std::cout << "WRONG, NO SHORT LOOP!\n";
-    }
     Draw(0);
     Draw(0);
     Draw(1);
     Draw(2);
-    if (_is_short_loop()) {
-        std::cout << "WRONG, NO SHORT LOOP!\n";
-    }
     Draw(3);
-    if (_is_short_loop()) {
-        std::cout << "CORRECT, SHORT LOOP!\n";
-    } else {
-        std::cout << "WRONG, SHOULD FIND SHORT LOOP!\n";
-    }
 
     /*
     Draw(0);
@@ -580,8 +554,8 @@ void SQIceGame::TEST(){
     Draw(1);
     Draw(1);
     std::cout << " init agent site = " << init_agent_site << "\n";
-    DIR d = get_direction_by_sites(traj_sites[0], traj_sites[1]);
-    std::cout << "From " << traj_sites[0] << " to " << traj_sites[1] 
+    DIR d = get_direction_by_sites(agent_site_trajectory[0], agent_site_trajectory[1]);
+    std::cout << "From " << agent_site_trajectory[0] << " to " << agent_site_trajectory[1] 
                 << " is done by action " << d << "\n"; 
     if(_is_traj_continuous()) {
         std::cout << "Loop is cont\n";
@@ -592,7 +566,7 @@ void SQIceGame::TEST(){
         std::cout << "End meets!\n";
     }
     std::cout << "traj: ";
-    _print_vector(traj_sites);
+    _print_vector(agent_site_trajectory);
     std::cout << "no repetition traj: ";
     _print_vector(traj_norepeat);
 
@@ -692,8 +666,8 @@ void SQIceGame::_print_vector(const vector<int> &v) {
 
 bool SQIceGame::_is_visited(int site) {
     bool visited = false;
-    if (std::find(traj_sites.begin(), 
-                    traj_sites.end(), site) != traj_sites.end()) {
+    if (std::find(agent_site_trajectory.begin(), 
+                    agent_site_trajectory.end(), site) != agent_site_trajectory.end()) {
         visited = true;
     }
     return visited;
@@ -707,12 +681,12 @@ bool SQIceGame::_is_traj_continuous() {
     bool cont = true;
     // try walk through traj with operation
     // check next site is in its neighbors
-    for (std::vector<int>::size_type i = 1;  i < traj_sites.size(); i++) {
+    for (std::vector<int>::size_type i = 1;  i < agent_site_trajectory.size(); i++) {
         std::cout << "step " << i << endl;
-        DIR dir = get_direction_by_sites(traj_sites[i-1], traj_sites[i]); 
-        std::cout << "From " << traj_sites[i-1] << " to " << traj_sites[i] 
+        int dir = get_direction_by_sites(agent_site_trajectory[i-1], agent_site_trajectory[i]); 
+        std::cout << "From " << agent_site_trajectory[i-1] << " to " << agent_site_trajectory[i] 
                 << " is done by action " << dir << "\n"; 
-        if (dir == NOWAY) {
+        if (dir == -1) {
             cont = false;
             break;
         }
@@ -722,49 +696,30 @@ bool SQIceGame::_is_traj_continuous() {
 
 bool SQIceGame::_is_traj_intersect() {
     bool meet = false;
-    std::vector<int>::iterator p = std::find(sites_counter.begin(), 
-                                             sites_counter.end(), 2);
-    if (p != sites_counter.end()) {
+    std::vector<int>::iterator p = std::find(ep_site_counters.begin(), 
+                                             ep_site_counters.end(), 2);
+    if (p != ep_site_counters.end()) {
         meet = true;
     }
     return meet;
 }
 
-int SQIceGame::_cal_config_difference() {
+int SQIceGame::_cal_config_t_difference() {
     int diff_counter = 0;
     for (size_t i = 0 ; i < N; i++) {
         if (state_0[i] != state_t[i]) {
             diff_counter++;
-            diff_map[i] = 1;
+            diff_map[i] = 1.0;
         }
     }
     return diff_counter;
 }
-
-bool SQIceGame::_is_long_loop() {
-    bool loop_occur = false;
-    /*
-        Check agent is visited init_site again, the the loop is closed (continous)
-    */
-    loop_occur = _is_start_end_meets(agent_site);
-    return loop_occur;
-}
-
-bool SQIceGame::_is_short_loop() {
-    bool loop_occur = false;
-    loop_occur = _is_traj_intersect();
-    return loop_occur;
-}
-
-void SQIceGame::long_loop_algorithm() {
-    set_agent_site(100);
-    int next_site = icemove(false);
-    while (!_is_start_end_meets(next_site)) {
-        Draw(how_to_go(next_site));
-        next_site = icemove(false);
+int SQIceGame::_count_config_difference(const vector<int> &c1, const vector<int> &c2) {
+    int counter = 0;
+    for (size_t i = 0 ; i < N; i++) {
+        if (c1[i] != c2[i]) {
+            counter++;
+        }
     }
-    Draw(how_to_go(next_site));
-    _print_vector(traj_norepeat);
-    flip_along_traj(traj_sites);
-    //flip_along_traj(traj_norepeat);
+    return counter;
 }
