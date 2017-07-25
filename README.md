@@ -34,20 +34,18 @@ Two options:
 * Metropolis button: 
 * Loop Auto-detection: 
 
-function called by env.step(action_index), here we provide severl step()
+function called by env.step(action_index)
 * step()
-* step_auto()
-* step_binary()
 
 ### rewards
 
 * Step-wise reward
 ```
-    r = - 10.0 * (energy difference + defect density)
+    r = scale * (icemove_w * rets[0] + energy_w * rets[1] + defect_w * rets[2] + baseline)
 ```
 * Accepted reward
 ```
-    r = +1.0
+    r = +1.0 * (loop_length / 4.0)
 ```
 
 ```
@@ -74,7 +72,6 @@ List in sqice.hpp
 * <s>Reward design</s>
 * Area reward
 * <s>Save loop config when accepted</s>
-* Short loop flip trajectory
-* Fix ambiguous `rets`
+* <s>Fix ambiguous `rets`</s>
 * demo codes
 
