@@ -192,7 +192,6 @@ int SQIceGame::GetStartPoint() {
 
 // member functions 
 vector<double> SQIceGame::Metropolis() {
-    action_statistics[6]++;
     vector<double> rets(4);
     bool is_accept = false;
     double E0 = _cal_energy_of_state(state_0);
@@ -201,6 +200,8 @@ vector<double> SQIceGame::Metropolis() {
     double dd = _cal_defect_density_of_state(state_t);
     int diff_counts = _cal_config_t_difference();
     double diff_ratio = diff_counts / double(N);
+
+    // calculates returns
     if (dE == 0.0) {
         if (dd != 0.0) {
             std::cout << "[SQIceGame]: State has no energy changes but contains defects! Sanity checking fails!\n";
@@ -213,6 +214,12 @@ vector<double> SQIceGame::Metropolis() {
     rets[1] = dE;
     rets[2] = dd;
     rets[3] = diff_ratio;
+
+    // update counters
+    action_statistics[6]++;
+    num_total_steps++;
+    ep_step_counter++;
+
     return rets;
 }
 
