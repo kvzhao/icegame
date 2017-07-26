@@ -97,7 +97,7 @@ class IceGameEnv(core.Env):
                 reward = 1.0 * (loop_length / 4.0) # reward with different length by normalizing with len 4 elements
                 with open(self.ofilename, 'a') as f:
                     f.write('{}\n'.format(self.sim.get_trajectory()))
-                    print ('\tSave loop configuration to file')
+                    print ('\tSave loop configuration to file: {}'.format(self.ofilename))
                 print ('\tTotal accepted number = {}'.format(self.sim.get_updated_counter()))
                 print ('\tAccepted loop len = {}'.format(loop_length))
                 print ('\tAgent walks {} steps in episode, action counters: {}'.format(ep_steps, self.sim.get_ep_action_counters()))
@@ -123,8 +123,11 @@ class IceGameEnv(core.Env):
         return obs, reward, terminate, rets
 
     # Start function used for agent learing
-    def start(self, init_site):
-        init_agent_site = self.sim.start(init_site)
+    def start(self, init_site=None):
+        if init_site == None:
+            init_agent_site = self.sim.start(rnum(self.N))
+        else:
+            init_agent_site = self.sim.start(init_site)
         assert(init_site == init_agent_site)
 
     def reset(self):
