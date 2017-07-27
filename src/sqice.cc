@@ -40,7 +40,7 @@ SQIceGame::SQIceGame (INFO info) : sim_info(info) {
     canvas_traj_map.resize(N, 0.0);
     canvas_spin_map.resize(N, 0.0);
     energy_map.resize(N, 0.0);
-    defect_map.resize(N, 0.0);
+    defect_map.resize(N, 1.0);
     diff_map.resize(N, 0.0);
 
     std::cout << "[GAME] Square Ice Game is created.\n";
@@ -65,7 +65,7 @@ void SQIceGame::clear_maps() {
     std::fill(energy_map.begin(),
               energy_map.end(), 0.0);
     std::fill(defect_map.begin(),
-              defect_map.end(), 0.0);
+              defect_map.end(), 1.0);
     std::fill(diff_map.begin(), diff_map.end(), 0.0);
 }
 
@@ -516,10 +516,10 @@ object SQIceGame::GetDefectMap() {
     for (uint i =0; i < N; i++) {
         double dd = 0.0;
         if (latt.sub[i] == 1) {
-            dd = state_tp1[i] + state_tp1[latt.NN[i][0]] + state_tp1[latt.NN[i][1]] + state_tp1[latt.NNN[i][0]];
+            dd = abs(state_tp1[i] + state_tp1[latt.NN[i][0]] + state_tp1[latt.NN[i][1]] + state_tp1[latt.NNN[i][0]]);
             dd /= 4.0;
         }
-        defect_map[i] = dd;
+        defect_map[i] = 1.0 - dd;
     }
     return float_wrap(defect_map);
 }

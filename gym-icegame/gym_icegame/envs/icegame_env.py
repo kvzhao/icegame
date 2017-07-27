@@ -104,7 +104,7 @@ class IceGameEnv(core.Env):
                 print ('\tAgent walks {} steps in episode, action counters: {}'.format(ep_steps, self.sim.get_ep_action_counters()))
                 action_counters = self.sim.get_action_statistics()
                 action_stats = [x / total_steps for x in action_counters]
-                print ('\tStatistics of actions all episodes (ep={0}, steps={1}) : {2:.4f}'.format(ep, total_steps, action_stats))
+                print ('\tStatistics of actions all episodes (ep={}, steps={}) : {}'.format(ep, total_steps, action_stats))
                 self.render()
                 self.sim.clear_buffer()
             else:
