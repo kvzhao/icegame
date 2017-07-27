@@ -133,7 +133,7 @@ class IceGameEnv(core.Env):
     def reset(self):
         ## clear buffer and set new start of agent
         site = rnum(self.N)
-        init_site = self.restart(site)
+        init_site = self.sim.restart(site)
         assert(init_site == site)
         self.episode_counter += 1
         return self.get_obs()
