@@ -95,6 +95,7 @@ class IceGameEnv(core.Env):
                 ep_steps = self.sim.get_ep_step_counter()
                 ep = self.sim.get_episode()
                 loop_length = self.sim.get_accepted_length()[-1]
+                update_times = self.sim.get_updated_counter()
                 reward = 1.0 * (loop_length / 4.0) # reward with different length by normalizing with len 4 elements
                 with open(self.ofilename, 'a') as f:
                     f.write('{}\n'.format(self.sim.get_trajectory()))
@@ -105,6 +106,7 @@ class IceGameEnv(core.Env):
                 action_counters = self.sim.get_action_statistics()
                 action_stats = [x / total_steps for x in action_counters]
                 print ('\tStatistics of actions all episodes (ep={}, steps={}) : {}'.format(ep, total_steps, action_stats))
+                print ('\tAcceptance ratio (accepted/total Eps) = {}%'.format(update_times * 100.0 / ep))
                 self.render()
                 self.sim.clear_buffer()
             else:
