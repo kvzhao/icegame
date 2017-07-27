@@ -217,6 +217,7 @@ vector<double> SQIceGame::Metropolis() {
 
     // update counters
     action_statistics[6]++;
+    action_counters[6]++;
     num_total_steps++;
     ep_step_counter++;
 

@@ -95,6 +95,7 @@ class SQIceGame {
         // statistical information
         int GetStartPoint();
         inline unsigned long GetTotalSteps() {return num_total_steps;};
+        inline unsigned long GetEpisode() {return num_episode;};
         inline int GetEpStepCounter() {return ep_step_counter;};
         inline int GetUpdatedCounter() {return updated_counter;};
         inline vector<int> GetAcceptedLen() {return accepted_looplength;};
@@ -253,6 +254,7 @@ BOOST_PYTHON_MODULE(icegame)
 
         .def("get_start_point", &SQIceGame::GetStartPoint)
         .def("get_total_steps", &SQIceGame::GetTotalSteps)
+        .def("get_episode", &SQIceGame::GetEpisode)
         .def("get_ep_step_counter", &SQIceGame::GetEpStepCounter)
         .def("get_action_statistics", &SQIceGame::GetActionStatistics)
         .def("get_ep_action_counters", &SQIceGame::GetEpActionCounters)

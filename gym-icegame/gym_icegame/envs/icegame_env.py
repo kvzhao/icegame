@@ -93,17 +93,18 @@ class IceGameEnv(core.Env):
                 print ('[GAME] PROPOSAL ACCEPTED!')
                 total_steps = self.sim.get_total_steps()
                 ep_steps = self.sim.get_ep_step_counter()
+                ep = self.sim.get_episode()
                 loop_length = self.sim.get_accepted_length()[-1]
                 reward = 1.0 * (loop_length / 4.0) # reward with different length by normalizing with len 4 elements
                 with open(self.ofilename, 'a') as f:
                     f.write('{}\n'.format(self.sim.get_trajectory()))
                     print ('\tSave loop configuration to file: {}'.format(self.ofilename))
                 print ('\tTotal accepted number = {}'.format(self.sim.get_updated_counter()))
-                print ('\tAccepted loop len = {}'.format(loop_length))
+                print ('\tAccepted loop length = {}'.format(loop_length))
                 print ('\tAgent walks {} steps in episode, action counters: {}'.format(ep_steps, self.sim.get_ep_action_counters()))
                 action_counters = self.sim.get_action_statistics()
                 action_stats = [x / total_steps for x in action_counters]
-                print ('\tStatistics of actions all episodes (steps={}) : {}'.format(total_steps, action_stats))
+                print ('\tStatistics of actions all episodes (ep={}, steps={}) : {0:.4f}'.format(ep, total_steps, action_stats))
                 self.render()
                 self.sim.clear_buffer()
             else:
