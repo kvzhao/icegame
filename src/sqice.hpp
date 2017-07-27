@@ -187,7 +187,7 @@ class SQIceGame {
         /* Statistics of Game */
 
         unsigned long num_total_steps;
-        unsigned int num_episode; // number of resets
+        unsigned long num_episode; // number of resets
         int same_ep_counter; // records for playing the same game
         unsigned int updated_counter;
 
