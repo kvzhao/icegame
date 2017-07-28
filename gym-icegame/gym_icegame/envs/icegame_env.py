@@ -179,9 +179,9 @@ class IceGameEnv(core.Env):
     ## ray test  (for: int, list, np_list)
     def conver_1Dto2D(self, input_1D):
         output_2D = None
-        if type(input_1D) == type(int):
+        if type(input_1D) == type(int()):
             output_2D = (int(input_1D/self.L), int(input_1D%self.L))
-        elif type(input_1D) == type(list):
+        elif type(input_1D) == type(list()):
             output_2D = []
             for i in range(len(input_1D)):
                 output_2D.append((int(input_1D/self.L), int(input_1D%self.L)))
