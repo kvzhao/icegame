@@ -72,7 +72,7 @@ class IceGameEnv(core.Env):
         self.episode_counter = 0
 
         ## ray test
-        self.auto_6 = False
+        self.auto_metropolis = False
         # ray add list:
         #     1. log 2D (x, y) in self.ofilename
         #     2. add self.caculate_area() and loop_area
@@ -175,15 +175,13 @@ class IceGameEnv(core.Env):
         scaling = 2.0
         return (icemove_w * rets[0] + energy_w * rets[1] + defect_w * rets[2] + baseline) * scaling
 
-    def sample_icemove_action_index(self):
-        return self.sim.icemove_index()
 
     ## ray test  (for: int, list, np_list)
     def conver_1Dto2D(self, input_1D):
         output_2D = None
         if type(input_1D) == type(int):
             output_2D = (int(input_1D/self.L), int(input_1D%self.L))
-        elif type(input_1D) == type(self.sim.get_trajectory()) or type(input_1D) == type(list):
+        elif type(input_1D) == type(list):
             output_2D = []
             for i in range(len(input_1D)):
                 output_2D.append((int(input_1D/self.L), int(input_1D%self.L)))
@@ -191,27 +189,27 @@ class IceGameEnv(core.Env):
 
     ## ray test
     def caculate_area(self):
-        walk_path_2D = self.conver1Dto2D(self.sim.get_trajectory())
-        walk_path_2D_dict = {}
-        for x, y in walk_path_2D:
-            if x in walk_path_2D_dict:
-                walk_path_2D_dict[x].append(y)
+        traj_2D = self.conver1Dto2D(self.sim.get_trajectory())
+        traj_2D_dict = {}
+        for x, y in traj_2D:
+            if x in traj_2D_dict:
+                traj_2D_dict[x].append(y)
             else:
-                walk_path_2D_dict[x] = [y]
+                traj_2D_dict[x] = [y]
 
         # check Max y_length
         y_position_list = []
-        for y_list in walk_path_2D_dict.values():
+        for y_list in traj_2D_dict.values():
             y_position_list = y_position_list + y_list
         y_position_list = list(set(y_position_list))
         max_y_length = len(y_position_list) -1
 
         area = 0
-        for x in walk_path_2D_dict:
-            diff = max(walk_path_2D_dict[x]) - min(walk_path_2D_dict[x])
+        for x in traj_2D_dict:
+            diff = max(traj_2D_dict[x]) - min(traj_2D_dict[x])
             if diff > max_y_length:
                 diff = max_y_length
-            temp_area = diff - len(walk_path_2D_dict[x]) +1  ## avoid vertical straight line
+            temp_area = diff - len(traj_2D_dict[x]) +1  ## avoid vertical straight line
             if temp_area > 0:
                 area = area + temp_area
 
