@@ -183,8 +183,8 @@ class IceGameEnv(core.Env):
             output_2D = (int(input_1D/self.L), int(input_1D%self.L))
         elif type(input_1D) == list:
             output_2D = []
-            for i in range(len(input_1D)):
-                output_2D.append((int(input_1D/self.L), int(input_1D%self.L)))
+            for position in input_1D:
+                output_2D.append((int(position/self.L), int(position%self.L)))
         return output_2D
 
     ## ray test
