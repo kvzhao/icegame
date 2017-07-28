@@ -71,6 +71,13 @@ class IceGameEnv(core.Env):
         ## counts reset()
         self.episode_counter = 0
 
+        ## ray test
+        self.auto_6 = False
+        # ray add list:
+        #     1. log 2D (x, y) in self.ofilename
+        #     2. add self.caculate_area() and loop_area
+        #     3. auto_6 (uncompleted)
+
     def step(self, action):
         terminate = False
         reward = 0.0
@@ -95,13 +102,17 @@ class IceGameEnv(core.Env):
                 ep_steps = self.sim.get_ep_step_counter()
                 ep = self.sim.get_episode()
                 loop_length = self.sim.get_accepted_length()[-1]
+                loop_area = self.caculate_area()
                 update_times = self.sim.get_updated_counter()
                 reward = 1.0 * (loop_length / 4.0) # reward with different length by normalizing with len 4 elements
+
+                # output to self.ofilename
                 with open(self.ofilename, 'a') as f:
-                    f.write('{}\n'.format(self.sim.get_trajectory()))
+                    f.write('1D: {}, \n(2D: {})\n'.format(self.sim.get_trajectory(), self.conver_1Dto2D(self.sim.get_trajectory())))
                     print ('\tSave loop configuration to file: {}'.format(self.ofilename))
+
                 print ('\tTotal accepted number = {}'.format(self.sim.get_updated_counter()))
-                print ('\tAccepted loop length = {}'.format(loop_length))
+                print ('\tAccepted loop length = {}, area = {}'.format(loop_length, loop_area))
                 print ('\tAgent walks {} steps in episode, action counters: {}'.format(ep_steps, self.sim.get_ep_action_counters()))
                 action_counters = self.sim.get_action_statistics()
                 action_stats = [x / total_steps for x in action_counters]
@@ -166,6 +177,46 @@ class IceGameEnv(core.Env):
 
     def sample_icemove_action_index(self):
         return self.sim.icemove_index()
+
+    ## ray test  (for: int, list, np_list)
+    def conver_1Dto2D(self, input_1D):
+        output_2D = None
+        if type(input_1D) == type(520):
+            output_2D = (int(input_1D/self.L), int(input_1D%self.L))
+        elif type(input_1D) == type(self.sim.get_trajectory()) or type(input_1D) == type([5,2,0]):
+            output_2D = []
+            for i in range(len(input_1D)):
+                output_2D.append((int(input_1D/self.L), int(input_1D%self.L)))
+        return output_2D
+
+    ## ray test
+    def caculate_area(self):
+        walk_path_2D = self.conver1Dto2D(self.sim.get_trajectory())
+        walk_path_2D_dict = {}
+        for x, y in walk_path_2D:
+            if x in walk_path_2D_dict:
+                walk_path_2D_dict[x].append(y)
+            else:
+                walk_path_2D_dict[x] = [y]
+
+        # check Max y_length
+        y_position_list = []
+        for y_list in walk_path_2D_dict.values():
+            y_position_list = y_position_list + y_list
+        y_position_list = list(set(y_position_list))
+        max_y_length = len(y_position_list) -1
+
+        area = 0
+        for x in walk_path_2D_dict:
+            diff = max(walk_path_2D_dict[x]) - min(walk_path_2D_dict[x])
+            if diff > max_y_length:
+                diff = max_y_length
+            temp_area = diff - len(walk_path_2D_dict[x]) +1  ## avoid vertical straight line
+            if temp_area > 0:
+                area = area + temp_area
+
+        return area
+
 
     def render(self, mapname ='traj', mode='ansi', close=False):
         #of = StringIO() if mode == 'ansi' else sys.stdout
