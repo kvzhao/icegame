@@ -189,7 +189,7 @@ class IceGameEnv(core.Env):
 
     ## ray test
     def caculate_area(self):
-        traj_2D = self.conver1Dto2D(self.sim.get_trajectory())
+        traj_2D = self.conver_1Dto2D(self.sim.get_trajectory())
         traj_2D_dict = {}
         for x, y in traj_2D:
             if x in traj_2D_dict:
