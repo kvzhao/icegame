@@ -5,13 +5,17 @@ Designed as an environments interacting with spin ice system.
 
 ## Compile & Install 
 
-### src
+### compile
 
 ```
-make -j4; make icegame
+sh compile.sh
 ```
 
-will generate libicegame.so which should be put under your execution folder.
+will generate icegame.so in build/src. please move icegame.so to where you executing experiment
+
+```
+mv build/src/icegame.so /where/you/run/icegame
+```
 
 ### gym-icegame
 
@@ -74,4 +78,5 @@ List in sqice.hpp
 * <s>Save loop config when accepted</s>
 * <s>Fix ambiguous `rets`</s>
 * demo codes
+* Analysis tools
 

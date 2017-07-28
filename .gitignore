@@ -7,7 +7,6 @@ SquareLattice
 info
 .DS_Store
 build
-test*
 gym_icegame.egg-info
 dist
 
