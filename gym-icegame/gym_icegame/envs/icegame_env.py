@@ -3,9 +3,10 @@ import gym
 from gym import error, spaces, utils, core
 
 #from six import StingIO
-import sys
-import numpy as np
+import sys, os
+import json
 import random
+import numpy as np
 from icegame import SQIceGame, INFO
 
 import time
@@ -66,6 +67,9 @@ class IceGameEnv(core.Env):
         self.ofilename = 'loop_sites.log'
         # render file
         self.rfilename = 'loop_renders.log'
+        # save log to json for future analysis
+        self.json_file = 'env_history.json'
+
         self.stacked_axis = 2
 
         ## counts reset()
@@ -75,7 +79,7 @@ class IceGameEnv(core.Env):
         self.auto_metropolis = False
         # ray add list:
         #     1. log 2D (x, y) in self.ofilename
-        #     2. add self.caculate_area() and loop_area
+        #     2. add self.calculate_area() and loop_area
         #     3. auto_6 (uncompleted)
 
     def step(self, action):
@@ -104,7 +108,7 @@ class IceGameEnv(core.Env):
                 ep_steps = self.sim.get_ep_step_counter()
                 ep = self.sim.get_episode()
                 loop_length = self.sim.get_accepted_length()[-1]
-                loop_area = self.caculate_area()
+                loop_area = self.calculate_area()
                 update_times = self.sim.get_updated_counter()
                 reward = 1.0 * (loop_length / 4.0) # reward with different length by normalizing with len 4 elements
 
@@ -120,6 +124,9 @@ class IceGameEnv(core.Env):
                 action_stats = [x / total_steps for x in action_counters]
                 print ('\tStatistics of actions all episodes (ep={}, steps={}) : {}'.format(ep, total_steps, action_stats))
                 print ('\tAcceptance ratio (accepted/total Eps) = {}%'.format(update_times * 100.0 / ep))
+
+                self.dump_env_states()
+
                 self.render()
                 self.sim.clear_buffer()
             else:
@@ -189,7 +196,7 @@ class IceGameEnv(core.Env):
         return output_2D
 
     ## ray test
-    def caculate_area(self):
+    def calculate_area(self):
         traj_2D = self.conver_1Dto2D(self.sim.get_trajectory())
         traj_2D_dict = {}
         for x, y in traj_2D:
@@ -205,7 +212,7 @@ class IceGameEnv(core.Env):
         y_position_list = list(set(y_position_list))
         max_y_length = len(y_position_list) -1
 
-        area = 0
+        area = 0.0
         for x in traj_2D_dict:
             diff = max(traj_2D_dict[x]) - min(traj_2D_dict[x])
             if diff > max_y_length:
@@ -279,3 +286,41 @@ class IceGameEnv(core.Env):
     def _transf2d(self, s):
         # do we need zero mean here?
         return np.array(s, dtype=np.float32).reshape([self.L, self.L])
+
+    def _append_record(self, record):
+        with open(self.json_file, 'a') as f:
+            json.dump(record, f)
+            f.write(os.linesep)
+
+    def dump_env_states(self):
+        # get current timestamp
+        total_steps = self.sim.get_total_steps()
+        ep = self.sim.get_episode()
+        # agent walk # steps in this episode
+        ep_step_counters = self.sim.get_ep_step_counter()
+        trajectory = self.sim.get_trajectory()
+        if self.sim.get_accepted_length():
+            loop_length = self.sim.get_accepted_length()[-1]
+        else :
+            loop_length = 0
+        enclosed_area = self.calculate_area()
+        update_times = self.sim.get_updated_counter()
+        action_counters = self.sim.get_action_statistics()
+        action_stats = [x / total_steps for x in action_counters]
+
+        start_site = self.sim.get_start_point()
+        acceptance = update_times * 100.0 / ep
+
+        d = {
+            'Episode': ep,
+            'Steps'  : total_steps,
+            'StartSite'  : start_site,
+            'Trajectory': trajectory,
+            'UpdateTimes': update_times,
+            'AcceptanceRatio' : acceptance, 
+            'LoopLength': loop_length,
+            'EnclosedArea': enclosed_area,
+            'ActionStats' : action_stats
+        }
+        
+        self._append_record(d)
