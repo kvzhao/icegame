@@ -19,7 +19,7 @@ SQIceGame::SQIceGame (INFO info) : sim_info(info) {
 
     updated_counter = 0;
     num_total_steps = 0;
-    num_episode = 0;
+    num_episode = 1;
     same_ep_counter = 0;
 
     mag_fields.push_back(h1_t);
