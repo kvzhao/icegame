@@ -263,8 +263,6 @@ BOOST_PYTHON_MODULE(icegame)
         .def("get_accepted_length", &SQIceGame::GetAcceptedLen)
         .def("get_trajectory", &SQIceGame::GetTrajectory)
 
-
-        .def("TEST", &SQIceGame::TEST)
     ;
 
 }

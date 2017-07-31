@@ -524,69 +524,6 @@ object SQIceGame::GetDefectMap() {
     return float_wrap(defect_map);
 }
 
-void SQIceGame::TEST(){
-    std::cout << "/=========================================/\n";
-
-    set_agent_site(5000);
-    std::cout << "Set Agent site at 5000, agent = " << get_agent_site() << "\n";
-    set_agent_site(100);
-    std::cout << "Set Agent site at 100, agent = " << get_agent_site() << "\n";
-    std::cout << "Its neighbors are ";
-    _print_vector(get_neighbor_sites());
-    std::cout << ".... with corresponding spins are ";
-    _print_vector(get_neighbor_spins());
-
-    std::cout << " init agent site = " << init_agent_site << "\n";
-
-    std::cout << "/=========================================/\n";
-    //long_loop_algorithm();
-    //flip_along_traj(traj_norepeat);
-    Draw(0);
-    Draw(0);
-    Draw(0);
-    Draw(0);
-    Draw(0);
-    Draw(1);
-    Draw(2);
-    Draw(3);
-
-    /*
-    Draw(0);
-    _print_vector(get_neighbor_candidates());
-    Draw(0);
-    _print_vector(get_neighbor_candidates());
-    Draw(3);
-    Draw(3);
-    Draw(2);
-    Draw(2);
-    Draw(1);
-    Draw(1);
-    std::cout << " init agent site = " << init_agent_site << "\n";
-    DIR d = get_direction_by_sites(agent_site_trajectory[0], agent_site_trajectory[1]);
-    std::cout << "From " << agent_site_trajectory[0] << " to " << agent_site_trajectory[1] 
-                << " is done by action " << d << "\n"; 
-    if(_is_traj_continuous()) {
-        std::cout << "Loop is cont\n";
-    } else {
-        std::cout << "Loop is NOT cont\n";
-    }
-    if(_is_start_end_meets(agent_site)) {
-        std::cout << "End meets!\n";
-    }
-    std::cout << "traj: ";
-    _print_vector(agent_site_trajectory);
-    std::cout << "no repetition traj: ";
-    _print_vector(traj_norepeat);
-
-    //std::cout << "Agent site after ice move : " << icemove() << "\n";
-    //std::cout << "Agent site after ice move : " << icemove() << "\n";
-    //std::cout << "Agent site after ice move : " << icemove() << "\n";
-    //std::cout << "Agent site after ice move : " << icemove() << "\n";
-    //std::cout << "Agent site after ice move : " << icemove() << "\n";
-    flip_along_traj(traj_norepeat);
-    */
-}
-
 // ###### private function ######
 double SQIceGame::_cal_energy_of_state(const vector<int> & s) {
     double eng = 0.0;
