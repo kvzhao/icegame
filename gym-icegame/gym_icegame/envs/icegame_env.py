@@ -92,12 +92,14 @@ class IceGameEnv(core.Env):
             metropolis_executed = True
         elif (0 <= action < 6) :
             rets = self.sim.draw(action)
+        
+        is_aceept, dEnergy, dDensity, dConfig = rets
 
         # metropolis judgement
         if (metropolis_executed):
-            if rets[0] > 0 and rets[3] > 0:
+            if is_aceept > 0 and dConfig > 0:
                 self.sim.update_config()
-                print ('[GAME] PROPOSAL ACCEPTED!')
+                print ('[GAME_ENV] PROPOSAL ACCEPTED!')
                 total_steps = self.sim.get_total_steps()
                 ep_steps = self.sim.get_ep_step_counter()
                 ep = self.sim.get_episode()
@@ -174,7 +176,6 @@ class IceGameEnv(core.Env):
         baseline = 0.009765625 ## 1 / 1024
         scaling = 2.0
         return (icemove_w * rets[0] + energy_w * rets[1] + defect_w * rets[2] + baseline) * scaling
-
 
     ## ray test  (for: int, list, np_list)
     def conver_1Dto2D(self, input_1D):
