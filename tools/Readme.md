@@ -1,7 +1,7 @@
 ## Tools for analysis
 
 ```
-python AnalyiseHist --logdir /path/to/env_history.json
+python AnalyiseHist.py --logdir /path/to/env_history.json
 ```
 
 Provide simple functions reading json file and plot the following
@@ -21,3 +21,4 @@ Loop topoloy, showing thier length and area
 
 ### TODO Lists
 * Action statistics
+* Classify loop config from its area and length
