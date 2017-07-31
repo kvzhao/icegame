@@ -85,6 +85,8 @@ plt.show()
 
 plt.plot(indices, lengths, linewidth=1.5)
 plt.plot(indices, areas, linewidth=1.5)
+axes = plt.gca()
+axes.set_ylim([-1, 32])
 plt.legend(['Accepted Length', 'Enclosed Area'])
 plt.title('Accepted Loop Topology')
 plt.savefig('loop_topo.png')
