@@ -75,12 +75,30 @@ class IceGameEnv(core.Env):
         ## counts reset()
         self.episode_counter = 0
 
-        ## ray test
-        self.auto_metropolis = False
-        # ray add list:
+        ## ray test, add list:
         #     1. log 2D (x, y) in self.ofilename
         #     2. add self.calculate_area() and loop_area
-        #     3. auto_6 (uncompleted)
+        #     3. auto_metropolis (uncompleted)
+        #   8/2:
+        #     4. add start_point_flag in self.get_obs()
+        #     5. add save_record_dict(): to record the amount of length and area
+        #     6. add area_reward in step()
+        #     7. add hundred_test(): to count accepted ratio in last 100 episodes
+        self.auto_metropolis = False
+        self.record_dict = [{}, {}]
+        self.area_reward = True
+        self.accepted_in_hundred = 0
+        self.accepted_in_hundred_stack = []
+
+    def hundred_test(self, accepted=False):
+        hundred_size = 100
+        if len(self.accepted_in_hundred_stack) < hundred_size:
+            self.accepted_in_hundred_stack.append(accepted)
+        elif accepted == True:
+            self.accepted_in_hundred_stack[-1] = True
+        elif len(self.accepted_in_hundred_stack) == hundred_size:
+            self.accepted_in_hundred_stack = self.accepted_in_hundred_stack[1:] + [False]
+        self.accepted_in_hundred = self.accepted_in_hundred_stack.count(True) 
 
     def step(self, action):
         terminate = False
@@ -88,6 +106,7 @@ class IceGameEnv(core.Env):
         obs = None
         rets = [0.0, 0.0, 0.0, 0.0]
         metropolis_executed = False
+        self.hundred_test()     ## ray test
 
         ## execute different type of actions
         if (action == 6):
@@ -109,22 +128,30 @@ class IceGameEnv(core.Env):
                 ep = self.sim.get_episode()
                 loop_length = self.sim.get_accepted_length()[-1]
                 loop_area = self.calculate_area()
+                self.save_record_dict(loop_length, loop_area)   ## ray test
                 update_times = self.sim.get_updated_counter()
+
                 reward = 1.0 * (loop_length / 4.0) # reward with different length by normalizing with len 4 elements
+
+                ## ray test, area reward & hundred_test()
+                self.hundred_test(True)     ## ray test
+                if self.area_reward:
+                    reward = reward + loop_area
 
                 # output to self.ofilename
                 with open(self.ofilename, 'a') as f:
-                    f.write('1D: {}, \n(2D: {})\n'.format(self.sim.get_trajectory(), self.conver_1Dto2D(self.sim.get_trajectory())))
+                    f.write('1D: {}  (2D: {})\n'.format(self.sim.get_trajectory(), self.conver_1Dto2D(self.sim.get_trajectory())))
                     print ('\tSave loop configuration to file: {}'.format(self.ofilename))
 
                 print ('\tTotal accepted number = {}'.format(self.sim.get_updated_counter()))
                 print ('\tAccepted loop length = {}, area = {}'.format(loop_length, loop_area))
-                print ('\tAgent walks {} steps in episode, action counters: {}'.format(ep_steps, self.sim.get_ep_action_counters()))
+                print ('\tAccepted record: loop = {}, area = {}'.format(self.record_dict[0], self.record_dict[1]))  ## ray test
+                print ('\tAgent walks {} steps in episode, action counters: {}'.format(ep_steps, [format(member, '.2f') for member in self.sim.get_ep_action_counters()]))
                 action_counters = self.sim.get_action_statistics()
                 action_stats = [x / total_steps for x in action_counters]
                 print ('\tStatistics of actions all episodes (ep={}, steps={}) : {}'.format(ep, total_steps, action_stats))
-                print ('\tAcceptance ratio (accepted/total Eps) = {}%'.format(update_times * 100.0 / ep))
-
+                print ('\tAcceptance ratio (accepted/total Eps) = {} %, Acceptance ratio in hundred = {} %'.format(update_times * 100.0 / ep, self.accepted_in_hundred))
+                print ('-' + self.L * '---' + '+\n')
                 self.dump_env_states()
 
                 self.render()
@@ -144,6 +171,14 @@ class IceGameEnv(core.Env):
         ## add timeout mechanism?
 
         return obs, reward, terminate, rets
+
+    def _stepwise_weighted_returns(self, rets):
+        icemove_w = 0.000
+        energy_w = -1.0
+        defect_w = 0.0
+        baseline = 0.009765625 ## 1 / 1024
+        scaling = 2.0
+        return (icemove_w * rets[0] + energy_w * rets[1] + defect_w * rets[2] + baseline) * scaling
 
     # Start function used for agent learing
     def start(self, init_site=None):
@@ -176,15 +211,7 @@ class IceGameEnv(core.Env):
     def name_action_mapping(self):
         return self.index_mapping
 
-    def _stepwise_weighted_returns(self, rets):
-        icemove_w = 0.000
-        energy_w = -1.0
-        defect_w = 0.0
-        baseline = 0.009765625 ## 1 / 1024
-        scaling = 2.0
-        return (icemove_w * rets[0] + energy_w * rets[1] + defect_w * rets[2] + baseline) * scaling
-
-    ## ray test  (for: int, list, np_list)
+    ## ray test  (for: int, list)
     def conver_1Dto2D(self, input_1D):
         output_2D = None
         if type(input_1D) == int:
@@ -261,8 +288,15 @@ class IceGameEnv(core.Env):
             f.write('{}\n'.format(screen))
 
     def get_obs(self):
+
+        ## ray test, start point flag in 'canvas_map'
+        start_point_flag = 1.0
+        _start_point = self.sim.get_start_point()
+        _canvas_map = self.sim.get_canvas_map()
+        _canvas_map[_start_point] = start_point_flag
+
         config_map = self._transf2d(self.sim.get_state_t_map())
-        canvas_map = self._transf2d(self.sim.get_canvas_map())
+        canvas_map = self._transf2d(_canvas_map)
         energy_map = self._transf2d(self.sim.get_energy_map())
         defect_map = self._transf2d(self.sim.get_defect_map())
 
@@ -324,3 +358,15 @@ class IceGameEnv(core.Env):
         }
         
         self._append_record(d)
+
+
+    ## ray test
+    def save_record_dict(self, length, area):
+        def make_dict(target_dict, target_key):
+            if target_key in target_dict:
+                target_dict[target_key] = target_dict[target_key] +1
+            else:
+                target_dict[target_key] = 1
+        make_dict(target_dict = self.record_dict[0], target_key = length)
+        make_dict(target_dict = self.record_dict[1], target_key = area)
+
