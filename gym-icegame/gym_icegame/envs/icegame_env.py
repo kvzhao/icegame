@@ -241,7 +241,7 @@ class IceGameEnv(core.Env):
 
 
     def get_obs(self):
-        
+
         ## ray test, now_position flag in 'canvas_map'
         # in '_canvas_map':
         #   now_position -> now_position_flag
@@ -250,7 +250,7 @@ class IceGameEnv(core.Env):
         now_position_flag = +1.0    ## try -1
         path_flag = -1.0
         now_position = self.sim.get_agent_site()
-        _canvas_map = self.sim.get_canvas_map()
+        _canvas_map = np.copy(self.sim.get_canvas_map())
         for index in np.where(_canvas_map==now_position_flag)[0]:
             _canvas_map[index] = path_flag
         _canvas_map[now_position] = now_position_flag
