@@ -80,25 +80,16 @@ class IceGameEnv(core.Env):
         #     2. add self.calculate_area() and loop_area
         #     3. auto_metropolis (uncompleted)
         #   8/2:
-        #     4. add start_point_flag in self.get_obs()
+        #     4. <not good> add start_point_flag in self.get_obs()
         #     5. add save_record_dict(): to record the amount of length and area
         #     6. add area_reward in step()
         #     7. add hundred_test(): to count accepted ratio in last 100 episodes
+        #     8. add now_position & path flag in get_obs()
         self.auto_metropolis = False
         self.record_dict = [{}, {}]
         self.area_reward = True
         self.accepted_in_hundred = 0
         self.accepted_in_hundred_stack = []
-
-    def hundred_test(self, accepted=False):
-        hundred_size = 100
-        if len(self.accepted_in_hundred_stack) < hundred_size:
-            self.accepted_in_hundred_stack.append(accepted)
-        elif accepted == True:
-            self.accepted_in_hundred_stack[-1] = True
-        elif len(self.accepted_in_hundred_stack) == hundred_size:
-            self.accepted_in_hundred_stack = self.accepted_in_hundred_stack[1:] + [False]
-        self.accepted_in_hundred = self.accepted_in_hundred_stack.count(True) 
 
     def step(self, action):
         terminate = False
@@ -211,45 +202,6 @@ class IceGameEnv(core.Env):
     def name_action_mapping(self):
         return self.index_mapping
 
-    ## ray test  (for: int, list)
-    def conver_1Dto2D(self, input_1D):
-        output_2D = None
-        if type(input_1D) == int:
-            output_2D = (int(input_1D/self.L), int(input_1D%self.L))
-        elif type(input_1D) == list:
-            output_2D = []
-            for position in input_1D:
-                output_2D.append((int(position/self.L), int(position%self.L)))
-        return output_2D
-
-    ## ray test
-    def calculate_area(self):
-        traj_2D = self.conver_1Dto2D(self.sim.get_trajectory())
-        traj_2D_dict = {}
-        for x, y in traj_2D:
-            if x in traj_2D_dict:
-                traj_2D_dict[x].append(y)
-            else:
-                traj_2D_dict[x] = [y]
-
-        # check Max y_length
-        y_position_list = []
-        for y_list in traj_2D_dict.values():
-            y_position_list = y_position_list + y_list
-        y_position_list = list(set(y_position_list))
-        max_y_length = len(y_position_list) -1
-
-        area = 0.0
-        for x in traj_2D_dict:
-            diff = max(traj_2D_dict[x]) - min(traj_2D_dict[x])
-            if diff > max_y_length:
-                diff = max_y_length
-            temp_area = diff - len(traj_2D_dict[x]) +1  ## avoid vertical straight line
-            if temp_area > 0:
-                area = area + temp_area
-
-        return area
-
 
     def render(self, mapname ='traj', mode='ansi', close=False):
         #of = StringIO() if mode == 'ansi' else sys.stdout
@@ -287,13 +239,25 @@ class IceGameEnv(core.Env):
             f.write('Episode: {}, global step = {}\n'.format(self.episode_counter, self.sim.get_total_steps()))
             f.write('{}\n'.format(screen))
 
-    def get_obs(self):
 
-        ## ray test, start point flag in 'canvas_map'
-        start_point_flag = 1.0
-        _start_point = self.sim.get_start_point()
+    def get_obs(self):
+        # ## ray test, start point flag in 'canvas_map'
+        # start_point_flag = 1.0
+        # _start_point = self.sim.get_start_point()
+        # _canvas_map = self.sim.get_canvas_map()
+        # _canvas_map[_start_point] = start_point_flag
+
+        ## ray test, now_position flag in 'canvas_map'
+        # in '_canvas_map':
+        #   now_position -> now_position_flag
+        #   path -> path_flag
+        now_position_flag = +1.0    ## try -1
+        path_flag = -1.0
+        now_position = self.sim.get_agent_site()
         _canvas_map = self.sim.get_canvas_map()
-        _canvas_map[_start_point] = start_point_flag
+        while now_position_flag in _canvas_map:
+            _canvas_map[_canvas_map.tolist().index(now_position_flag)] = path_flag
+        _canvas_map[now_position] = now_position_flag
 
         config_map = self._transf2d(self.sim.get_state_t_map())
         canvas_map = self._transf2d(_canvas_map)
@@ -360,6 +324,45 @@ class IceGameEnv(core.Env):
         self._append_record(d)
 
 
+    ## ray test  (for: int, list)
+    def conver_1Dto2D(self, input_1D):
+        output_2D = None
+        if type(input_1D) == int:
+            output_2D = (int(input_1D/self.L), int(input_1D%self.L))
+        elif type(input_1D) == list:
+            output_2D = []
+            for position in input_1D:
+                output_2D.append((int(position/self.L), int(position%self.L)))
+        return output_2D
+
+    ## ray test
+    def calculate_area(self):
+        traj_2D = self.conver_1Dto2D(self.sim.get_trajectory())
+        traj_2D_dict = {}
+        for x, y in traj_2D:
+            if x in traj_2D_dict:
+                traj_2D_dict[x].append(y)
+            else:
+                traj_2D_dict[x] = [y]
+
+        # check Max y_length
+        y_position_list = []
+        for y_list in traj_2D_dict.values():
+            y_position_list = y_position_list + y_list
+        y_position_list = list(set(y_position_list))
+        max_y_length = len(y_position_list) -1
+
+        area = 0.0
+        for x in traj_2D_dict:
+            diff = max(traj_2D_dict[x]) - min(traj_2D_dict[x])
+            if diff > max_y_length:
+                diff = max_y_length
+            temp_area = diff - len(traj_2D_dict[x]) +1  ## avoid vertical straight line
+            if temp_area > 0:
+                area = area + temp_area
+
+        return area
+
     ## ray test
     def save_record_dict(self, length, area):
         def make_dict(target_dict, target_key):
@@ -370,3 +373,13 @@ class IceGameEnv(core.Env):
         make_dict(target_dict = self.record_dict[0], target_key = length)
         make_dict(target_dict = self.record_dict[1], target_key = area)
 
+    ## ray test
+    def hundred_test(self, accepted=False):
+        hundred_size = 100
+        if len(self.accepted_in_hundred_stack) < hundred_size:
+            self.accepted_in_hundred_stack.append(accepted)
+        elif accepted == True:
+            self.accepted_in_hundred_stack[-1] = True
+        elif len(self.accepted_in_hundred_stack) == hundred_size:
+            self.accepted_in_hundred_stack = self.accepted_in_hundred_stack[1:] + [False]
+        self.accepted_in_hundred = self.accepted_in_hundred_stack.count(True) 
