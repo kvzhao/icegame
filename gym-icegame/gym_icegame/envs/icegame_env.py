@@ -80,16 +80,20 @@ class IceGameEnv(core.Env):
         #     2. add self.calculate_area() and loop_area
         #     3. auto_metropolis (uncompleted)
         #   8/2:
-        #     4. <not good> add start_point_flag in self.get_obs()
         #     5. add save_record_dict(): to record the amount of length and area
         #     6. add area_reward in step()
         #     7. add hundred_test(): to count accepted ratio in last 100 episodes
         #     8. add now_position & path flag in get_obs()
-        self.auto_metropolis = False
         self.record_dict = [{}, {}]
-        self.area_reward = True
         self.accepted_in_hundred = 0
         self.accepted_in_hundred_stack = []
+
+        ## ray test, step_setting
+        self.area_reward = True                 # use both length & area to calculate the reward
+        self.auto_metropolis = False            # if the condition is OK, auto execute metropolis
+        self.metropolis_terminal = False        # if metropolis_executed == True, terminal = True
+        self.strict_step = False                # if rets[0] (is_aceept) == -1, terminal = True
+
 
     def step(self, action):
         terminate = False
@@ -104,10 +108,16 @@ class IceGameEnv(core.Env):
             self.sim.flip_trajectory()
             rets = self.sim.metropolis()
             metropolis_executed = True
+            if (self.metropolis_terminal):
+                terminate = True
         elif (0 <= action < 6) :
             rets = self.sim.draw(action)
         
         is_aceept, dEnergy, dDensity, dConfig = rets
+
+        if (self.auto_metropolis):
+            if is_aceept > 0 and dConfig > 0:
+                metropolis_executed = True
 
         # metropolis judgement
         if (metropolis_executed):
@@ -125,8 +135,8 @@ class IceGameEnv(core.Env):
                 reward = 1.0 * (loop_length / 4.0) # reward with different length by normalizing with len 4 elements
 
                 ## ray test, area reward & hundred_test()
-                self.hundred_test(True)     ## ray test
-                if self.area_reward:
+                self.hundred_test(True)     ## acceptance ratio in hundred Eps
+                if self.area_reward:        ## add area_reward
                     reward = reward + loop_area
 
                 # output to self.ofilename
@@ -140,7 +150,7 @@ class IceGameEnv(core.Env):
                 print ('\tAgent walks {} steps in episode, action counters: {}'.format(ep_steps, self.sim.get_ep_action_counters()))
                 action_counters = self.sim.get_action_statistics()
                 action_stats = [x / total_steps for x in action_counters]
-                print ('\tStatistics of actions all episodes (ep={}, steps={}) : {}'.format(ep, total_steps, [format(member, '.2f') for member in action_stats]))
+                print ('\tStatistics of actions all episodes (ep={}, steps={}): \n\t {}'.format(ep, total_steps, [format(member, '.3f') for member in action_stats]))
                 print ('\tAcceptance ratio (accepted/total Eps) = {} %, Acceptance ratio in hundred = {} %'.format(update_times * 100.0 / ep, self.accepted_in_hundred))
                 print ('-' + self.L * '---' + '+\n')
                 self.dump_env_states()
@@ -157,6 +167,9 @@ class IceGameEnv(core.Env):
         else:
             reward = self._stepwise_weighted_returns(rets)
             # as usual
+            if (self.strict_step): 
+                if is_aceept < 0:
+                    terminate = True
 
         obs = self.get_obs()
         ## add timeout mechanism?
