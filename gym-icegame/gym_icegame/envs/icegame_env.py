@@ -137,15 +137,15 @@ class IceGameEnv(core.Env):
                 print ('\tTotal accepted number = {}'.format(self.sim.get_updated_counter()))
                 print ('\tAccepted loop length = {}, area = {}'.format(loop_length, loop_area))
                 print ('\tAccepted record: loop = {}, area = {}'.format(self.record_dict[0], self.record_dict[1]))  ## ray test
-                print ('\tAgent walks {} steps in episode, action counters: {}'.format(ep_steps, [format(member, '.2f') for member in self.sim.get_ep_action_counters()]))
+                print ('\tAgent walks {} steps in episode, action counters: {}'.format(ep_steps, self.sim.get_ep_action_counters()))
                 action_counters = self.sim.get_action_statistics()
                 action_stats = [x / total_steps for x in action_counters]
-                print ('\tStatistics of actions all episodes (ep={}, steps={}) : {}'.format(ep, total_steps, action_stats))
+                print ('\tStatistics of actions all episodes (ep={}, steps={}) : {}'.format(ep, total_steps, [format(member, '.2f') for member in action_stats]))
                 print ('\tAcceptance ratio (accepted/total Eps) = {} %, Acceptance ratio in hundred = {} %'.format(update_times * 100.0 / ep, self.accepted_in_hundred))
                 print ('-' + self.L * '---' + '+\n')
                 self.dump_env_states()
 
-                self.render()
+                self.render(info=[loop_length, loop_area])
                 self.sim.clear_buffer()
             else:
                 self.sim.clear_buffer()
@@ -203,7 +203,7 @@ class IceGameEnv(core.Env):
         return self.index_mapping
 
 
-    def render(self, mapname ='traj', mode='ansi', close=False):
+    def render(self, info, mapname ='traj', mode='ansi', close=False):
         #of = StringIO() if mode == 'ansi' else sys.stdout
         #print ('Energy: {}, Defect: {}'.format(self.sqice.cal_energy_diff(), self.sqice.cal_defect_density()))
         s = None
@@ -237,10 +237,11 @@ class IceGameEnv(core.Env):
         #sys.stdout.write(screen)
         with open(self.rfilename, 'a') as f:
             f.write('Episode: {}, global step = {}\n'.format(self.episode_counter, self.sim.get_total_steps()))
+            f.write('Accepted loop length = {}, area = {}'.format(info[0], info[1]))    ## add
             f.write('{}\n'.format(screen))
 
 
-    def get_obs(self):
+    def get_obs(self):  ## use 1D coordinate
 
         ## ray test, now_position flag in 'canvas_map'
         # in '_canvas_map':
@@ -253,6 +254,10 @@ class IceGameEnv(core.Env):
         _canvas_map = np.copy(self.sim.get_canvas_map())
         for index in np.where(_canvas_map==now_position_flag)[0]:
             _canvas_map[index] = path_flag
+
+        if _canvas_map[self.sim.get_start_point()] == 0:
+            _canvas_map[self.sim.get_start_point()] = path_flag
+
         _canvas_map[now_position] = now_position_flag
 
         config_map = self._transf2d(self.sim.get_state_t_map())
