@@ -6,8 +6,7 @@ import argparse
 
 parser = argparse.ArgumentParser(description='Analyise history from Icegame environment.')
 
-parser.add_argument('--logdir', type=str, default='env_history.json',
-                   help='Json log file path.')
+parser.add_argument('--logdir', type=str, default='env_history.json', help='Json log file path.')
 
 args = parser.parse_args()
 
