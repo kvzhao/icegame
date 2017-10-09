@@ -56,16 +56,11 @@ bool SQIceGame::TimeOut() {
 }
 
 void SQIceGame::clear_maps() {
-    std::fill(canvas_traj_map.begin(),
-              canvas_traj_map.end(), 0.0);
-    std::fill(agent_map.begin(),
-              agent_map.end(), 0.0);
-    std::fill(canvas_spin_map.begin(),
-              canvas_spin_map.end(), 0.0);
-    std::fill(energy_map.begin(),
-              energy_map.end(), 0.0);
-    std::fill(defect_map.begin(),
-              defect_map.end(), 1.0);
+    std::fill(canvas_traj_map.begin(), canvas_traj_map.end(), 0.0);
+    std::fill(agent_map.begin(), agent_map.end(), 0.0);
+    std::fill(canvas_spin_map.begin(), canvas_spin_map.end(), 0.0);
+    std::fill(energy_map.begin(), energy_map.end(), 0.0);
+    std::fill(defect_map.begin(), defect_map.end(), 1.0);
     std::fill(diff_map.begin(), diff_map.end(), 0.0);
 }
 
@@ -95,17 +90,16 @@ void SQIceGame::update_state_to_config() {
         updated_counter++; 
         accepted_looplength.push_back(diff);
         // Avoid periodic timeout mechanism rule out preferable results
-   } else {
+    } else {
         std::cout << "[GAME] Ice Config is RUINED. Restore.\n";
         ice_config.Ising = backup;
         restore_config_to_state();
-   }
+    }
     // reset maps
 }
 
 void SQIceGame::UpdateConfig() {
     update_state_to_config();
-    //? reset some counters and maps
 }
 
 void SQIceGame::restore_config_to_state() {
@@ -135,8 +129,8 @@ void SQIceGame::MCRun(int mcSteps) {
     tt.timer_end();
 
     std::cout << "[GAME] Monte Carlo runs " 
-               << mcSteps << " steps with "
-               << tt.timer_duration() << " seconds.\n"; 
+                << mcSteps << " steps with "
+                << tt.timer_duration() << " seconds.\n"; 
     
     // Check whether it is icestates
     double Etot = model.total_energy(&ice_config, &latt);
@@ -445,7 +439,7 @@ int SQIceGame::get_neighbor_site_by_direction(int dir) {
 
     #ifdef DEBUG
     std::cout << "get_neighbor_site_by_direction(dir=" << dir << ") = " 
-              << site << " with agent site = " << agent_site << " \n";
+                << site << " with agent site = " << agent_site << " \n";
     #endif
     return site;
 }
@@ -483,12 +477,12 @@ int SQIceGame::get_direction_by_sites(int site, int next_site) {
 
     #ifdef DEBUG
     std::cout << "get_direction_by_sites(site=" << site << ", next=" << next_site << " ): its neighbors are "
-              << "right site = " << right_site << "\n"
-              << "left site = " << left_site << "\n"
-              << "up site = " << up_site << "\n"
-              << "down site = " << down_site << "\n"
-              << "upper next site = " << upper_next_site << "\n"
-              << "lower next site = " << lower_next_site << "\n";
+                << "right site = " << right_site << "\n"
+                << "left site = " << left_site << "\n"
+                << "up site = " << up_site << "\n"
+                << "down site = " << down_site << "\n"
+                << "upper next site = " << upper_next_site << "\n"
+                << "lower next site = " << lower_next_site << "\n";
     #endif
 
     return dir;
@@ -641,8 +635,7 @@ bool SQIceGame::_is_traj_continuous() {
 
 bool SQIceGame::_is_traj_intersect() {
     bool meet = false;
-    std::vector<int>::iterator p = std::find(ep_site_counters.begin(), 
-                                             ep_site_counters.end(), 2);
+    std::vector<int>::iterator p = std::find(ep_site_counters.begin(), ep_site_counters.end(), 2);
     if (p != ep_site_counters.end()) {
         meet = true;
     }

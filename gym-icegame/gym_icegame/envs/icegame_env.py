@@ -38,24 +38,24 @@ class IceGameEnv(core.Env):
         self.accepted_episode = False
 
         self.name_mapping = dict({
-                                  0 :   'right',
-                                  1 :   'down',
-                                  2 :   'left',
-                                  3 :   'up',
-                                  4 :   'lower_next',
-                                  5 :   'upper_next',
-                                  6 :   'metropolis',
-                                  })
+                                    0 :   'right',
+                                    1 :   'down',
+                                    2 :   'left',
+                                    3 :   'up',
+                                    4 :   'lower_next',
+                                    5 :   'upper_next',
+                                    6 :   'metropolis',
+                                    })
 
         self.index_mapping = dict({
-                                  'right': 0,
-                                  'down' : 1,
-                                  'left' : 2,
-                                  'up' : 3,
-                                  'lower_next' : 4,
-                                  'upper_next' : 5,
-                                  'metropolis' : 6,
-                                  })
+                                    'right': 0,
+                                    'down' : 1,
+                                    'left' : 2,
+                                    'up' : 3,
+                                    'lower_next' : 4,
+                                    'upper_next' : 5,
+                                    'metropolis' : 6,
+                                    })
 
 
         ### action space and state space
@@ -267,9 +267,9 @@ class IceGameEnv(core.Env):
         defect_map = self._transf2d(self.sim.get_defect_map())
 
         return np.stack([config_map,
-                         canvas_map,
-                         energy_map,
-                         defect_map
+                        canvas_map,
+                        energy_map,
+                        defect_map
         ], axis=self.stacked_axis)
 
     @property
