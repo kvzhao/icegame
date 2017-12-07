@@ -1,6 +1,9 @@
 #pragma once
 //#define DEBUG
 // cpp standard 
+// boost.python intefaces
+#include <boost/python.hpp>
+#include <boost/python/stl_iterator.hpp>
 #include <iostream>
 #include <vector>
 #include <math.h>
@@ -14,9 +17,6 @@
 #include "lattice.hpp"
 #include "timer.hpp"
 
-// boost.python intefaces
-#include <boost/python.hpp>
-#include <boost/python/stl_iterator.hpp>
 #include <numpy/ndarrayobject.h> // ensure you include this header
 
 using namespace boost::python; 
